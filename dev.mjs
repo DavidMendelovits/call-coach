@@ -43,5 +43,4 @@ http.createServer(async (req, res) => {
   }
 }).listen(PORT, "127.0.0.1", () => console.log(`Call coach → http://localhost:${PORT}`));
 
-for (const k of ["APP_PASSCODE"]) if (!process.env[k]) console.warn(`⚠ ${k} missing from .env`);
 process.on("unhandledRejection", (e) => console.error("unhandled", e));

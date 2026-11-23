@@ -1,5 +1,5 @@
 // Coach styles. Selling is the sales coach. Learning coaches ME to keep asking good questions
-// when the other person knows more. The app, the Scorecard and the shared recap read their labels here.
+// when the other person knows more. The app, the Scorecard and the recap file read their labels here.
 (() => {
   const MODES = {
     sales: {

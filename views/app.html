@@ -16,7 +16,6 @@
   <symbol id="i-new" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></symbol>
   <symbol id="i-upload" viewBox="0 0 16 16"><path d="M8 10.5V2.5M5 5.5l3-3 3 3M3 10v2.5h10V10"/></symbol>
   <symbol id="i-history" viewBox="0 0 16 16"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v2.6h2.6M8 5v3l2 1.5"/></symbol>
-  <symbol id="i-share" viewBox="0 0 16 16"><path d="M9.5 2.5h4v4M13.5 2.5 7.5 8.5M12 9.5v4H2.5V4h4"/></symbol>
   <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5v-3h-8v8h3"/></symbol>
   <symbol id="i-help" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M6.3 6.2a1.8 1.8 0 1 1 2.5 1.7c-.5.2-.8.6-.8 1.1v.5M8 11.6v.1"/></symbol>
   <symbol id="i-check" viewBox="0 0 16 16"><path d="M3 8.5 6.5 12 13 4.5"/></symbol>
@@ -36,7 +35,7 @@
   <button id="clear" class="nav"><svg class="i"><use href="#i-new"/></svg>New session</button>
   <button id="import" class="nav"><svg class="i"><use href="#i-upload"/></svg>Upload transcript</button>
   <button class="nav" data-open-history><svg class="i"><use href="#i-history"/></svg>History</button>
-  <button id="share" class="nav" disabled><svg class="i"><use href="#i-share"/></svg>Share recap</button>
+  <button id="share" class="nav" disabled title="Saves the recap and transcript as one HTML file. Your call context is left out."><svg class="i"><use href="#i-down"/></svg>Download recap</button>
   <button id="copy" class="nav"><svg class="i"><use href="#i-copy"/></svg>Copy transcript</button>
   <div class="label">Inputs</div>
   <div id="inputs"></div>
@@ -55,16 +54,14 @@
   </div>
   <div class="label">Recent calls <button class="link" data-open-history data-history-count></button></div>
   <div id="sessions"></div>
-  <button class="link older-side" data-older hidden></button>
-  <div class="label">Shared recaps</div>
-  <div id="recaps"></div>
+  <div class="label" id="recaps-label" hidden>Shared links</div>
+  <div id="recaps" hidden></div>
   <div class="label">Session</div>
   <div id="status"><span class="dot"></span>idle</div>
   <div id="ratio"></div>
   <div class="bottom">
     <a class="nav" href="/how-it-works" target="_blank" rel="noopener"><svg class="i"><use href="#i-help"/></svg>How it works</a>
     <a class="nav" href="/check" target="_blank" rel="noopener"><svg class="i"><use href="#i-check"/></svg>Check this computer</a>
-    <form method="post" action="/logout"><button class="nav"><svg class="i"><use href="#i-out"/></svg>Sign out</button></form>
   </div>
 </aside>
 <div class="shell">
@@ -80,7 +77,7 @@
     <div id="left">
       <input id="title" placeholder="Call title, e.g. Mock design review" autocomplete="off" aria-label="Call title">
       <details id="ctxbox" open>
-        <summary>Call context <small>who, goals, facts not to overstate. Private: never in shared recaps</small></summary>
+        <summary>Call context <small>who, goals, facts not to overstate. Private: never in downloaded recaps</small></summary>
         <div class="presets"><label for="preset">Preset</label><select id="preset"></select><button type="button" class="mini" id="psave" title="Save this call context as a preset in this browser">Save</button><button type="button" class="mini" id="pdel" title="Delete this saved preset" hidden>Delete</button></div>
         <div class="presets"><span id="mode-l">Coach for</span><span class="seg" role="group" aria-labelledby="mode-l"><button type="button" data-mode="sales" aria-pressed="true" title="Sales coach: discovery, objections, next step">Selling</button><button type="button" data-mode="learning" aria-pressed="false" title="Learning coach: keeps you asking clarifying and follow-up questions">Learning</button></span><button type="button" class="mini dict" id="dictate" title="Speak the call context instead of typing it" aria-pressed="false"><svg class="i" style="width:14px;height:14px"><use href="#i-mic"/></svg><span class="lbl">Dictate</span></button></div>
         <div id="dictnote" class="dictnote" aria-live="polite"></div>
@@ -114,20 +111,10 @@
     </div>
   </main>
 </div>
-<dialog id="sharebox">
-  <h2>Recap ready to share</h2>
-  <p>Send the link and the code separately, for example the link by email and the code by text. The code is shown only once. The recap leaves out your call context.</p>
-  <div>Link</div>
-  <div class="field"><input id="shareurl" readonly aria-label="Recap link"><button class="mini" data-copy="shareurl">Copy</button></div>
-  <div>Code</div>
-  <div class="field"><input id="sharecode" class="code" readonly aria-label="Access code"><button class="mini" data-copy="sharecode">Copy</button></div>
-  <p id="shareexp"></p>
-  <form method="dialog" class="actions"><button class="btn primary">Done</button></form>
-</dialog>
 <dialog id="historybox" class="wide" aria-labelledby="hist-h">
   <div class="dh"><h2 id="hist-h">History</h2><input type="search" placeholder="Search calls" aria-label="Search calls"><form method="dialog"><button class="mini">Close</button></form></div>
   <div class="db"></div>
-  <div class="df"><span class="n"></span><button class="mini" data-older hidden></button><span>Saved in this browser only. No account, nothing on the server. Clearing this site's data deletes them.</span></div>
+  <div class="df"><span class="n"></span><span>Saved in this browser only. No account, nothing on the server. Clearing this site's data deletes them.</span></div>
 </dialog>
 <dialog id="activitybox" class="wide" aria-labelledby="act-h">
   <div class="dh"><h2 id="act-h">AI activity</h2><form method="dialog"><button class="mini">Close</button></form></div>
@@ -262,12 +249,8 @@ document.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => setCo
 modeLabels(); drawPresets();
 const titleEl = $("#title");
 titleEl.oninput = () => { if (session) { session.title = titleEl.value.trim(); save() } };
-// every server call goes through here: a 401 means the login cookie expired, so reload to the passcode page
-async function api(path, opts = {}) {
-  const r = await fetch(path, { ...opts, headers: { "content-type": "application/json", ...opts.headers, "x-coach-browser": CallHistory.browserKey() } });
-  if (r.status === 401) { location.reload(); throw new Error("signed out") }
-  return r;
-}
+// every server call goes through here; the browser key lets this browser see and revoke links it shared before
+const api = (path, opts = {}) => fetch(path, { ...opts, headers: { "content-type": "application/json", ...opts.headers, "x-coach-browser": CallHistory.browserKey() } });
 
 
 // ---- models, and how this version reaches them: all on this computer
@@ -290,7 +273,7 @@ Activity.on((ev) => {
 
 const lines = []; // {who, text, t}
 // ---- sessions: every call is saved in this browser (IndexedDB) as it happens, and History reopens it.
-// Nothing about a call is kept on the server unless you share a recap.
+// Nothing about a call is kept on the server.
 let session = null; // {id, startedAt, title, imported?, reconstructed?, shared?}
 let importing = null; // the session id being coached from an upload; opening or starting something else stops it
 // every update is kept with `at` = number of transcript lines it had seen, so a session can be replayed
@@ -318,36 +301,6 @@ const hist = CallHistory.mount({
   onDelete: (id) => { if (session?.id === id) resetView("deleted. Start a new call or open one from History") },
 });
 const refreshSessions = () => hist.refresh();
-// ---- calls saved on the server before history moved into the browser (Nov 23).
-// A button copies them into this browser once. The server copies stay where they are.
-let older = [];
-async function checkOlder() {
-  try {
-    const r = await api("/api/older-calls"); if (!r.ok) throw new Error("HTTP " + r.status);
-    const all = await r.json(), have = new Set((await CallHistory.list()).map((m) => m.id));
-    older = (Array.isArray(all) ? all : []).filter((x) => x && x.id && !have.has(x.id));
-  } catch (e) { console.warn("older calls", e); older = [] }
-  document.querySelectorAll("[data-older]").forEach((b) => {
-    b.hidden = !older.length; b.disabled = false;
-    b.textContent = `Bring in ${older.length} older call${older.length === 1 ? "" : "s"}`;
-    b.title = "Calls saved on the server before history moved into this browser. This copies them here; the server copies stay.";
-  });
-}
-document.querySelectorAll("[data-older]").forEach((b) => (b.onclick = async () => {
-  const todo = older.slice(), btns = document.querySelectorAll("[data-older]");
-  let n = 0, failed = 0;
-  for (const [i, x] of todo.entries()) {
-    btns.forEach((el) => { el.disabled = true; el.textContent = `Bringing in ${i + 1} of ${todo.length}…` });
-    try {
-      const r = await api(`/api/older-calls/${encodeURIComponent(x.id)}`), s = await r.json();
-      if (!r.ok || !Array.isArray(s?.lines)) throw new Error(s?.error || "HTTP " + r.status);
-      await CallHistory.put({ ...s, id: x.id, mode: CoachModes.ok(s.mode), shared: Array.isArray(s.shared) ? s.shared : [] }); n++;
-    } catch (e) { console.warn("older call", x.id, e); failed++ }
-  }
-  await hist.refresh(); await checkOlder();
-  setStatus(`brought in ${n} older call${n === 1 ? "" : "s"}${failed ? `; ${failed} couldn't be read` : ""}. They're in History`, false, failed ? "warn" : undefined);
-}));
-checkOlder();
 async function openSession(id) {
   if (running) return setStatus("Stop listening before opening another call", true, "warn");
   if (session?.id === id && lines.length) return;
@@ -747,28 +700,22 @@ function showReview() {
   wire();
 }
 
-// ---- share: a recap at /r/<id>, opened with a one-time code
+// ---- download: the recap and transcript as one HTML file that opens on its own. Nothing is stored on the server.
 $("#share").onclick = async () => {
   if (running || !session || !lines.length) return;
   const btn = $("#share"); btn.disabled = true;
   try {
     if (!review) { setStatus("writing the recap first…"); await runReview() }
-    const r = await api("/api/recaps", { method: "POST", body: JSON.stringify({ session: state() }) });
-    const x = await r.json(); if (x.error) throw new Error(x.error);
-    session.shared = [...(session.shared || []), x.id]; await saveNow();
-    $("#shareurl").value = x.url; $("#sharecode").value = x.code;
-    $("#shareexp").textContent = `The link stops working on ${new Date(x.expiresAt).toLocaleDateString([], { month: "short", day: "numeric" })}. Revoke it any time from the sidebar.`;
-    $("#sharebox").showModal();
-    setStatus("recap shared. Link and code are in the dialog");
-    refreshRecaps();
-  } catch (e) { setStatus("couldn't share: " + e.message, false, "warn") }
+    const r = await api("/api/recap-file", { method: "POST", body: JSON.stringify({ session: state() }) });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "HTTP " + r.status);
+    const name = (/filename="([^"]+)"/.exec(r.headers.get("content-disposition") || "") || [])[1] || "call-recap.html";
+    const a = document.createElement("a"); a.href = URL.createObjectURL(await r.blob()); a.download = name;
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60e3);
+    setStatus(`recap downloaded as ${name}. It opens in any browser and leaves out your call context`);
+  } catch (e) { setStatus("couldn't download the recap: " + e.message, false, "warn") }
   btn.disabled = running || !lines.length;
 };
-$("#sharebox").onclick = (e) => {
-  const b = e.target.closest("[data-copy]"); if (!b) return;
-  e.preventDefault();
-  navigator.clipboard.writeText($("#" + b.dataset.copy).value).then(() => (b.textContent = "Copied"), () => $("#" + b.dataset.copy).select());
-};
+// Links shared by an earlier version stay listed here, for this browser only, so they can be revoked.
 async function refreshRecaps() {
   try {
     const list = await (await api("/api/recaps")).json();
@@ -785,7 +732,7 @@ async function refreshRecaps() {
       a.title = "Expires " + new Date(x.expiresAt).toLocaleDateString([], { month: "short", day: "numeric" });
       row.append(a, del); el.append(row);
     }
-    if (!list.length) el.innerHTML = '<div class="empty">None from this browser</div>';
+    el.hidden = $("#recaps-label").hidden = !list.length;
   } catch { /* convenience list; ignore */ }
 }
 refreshRecaps();

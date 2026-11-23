@@ -1,13 +1,12 @@
 # Call coach, on-device
 
-Live call coach with no API keys: transcribes both sides of a call, reads the play after every line, coaches you in real time, writes a recap when you stop, and shares the recap behind a code. Speech to text and the coach model run in the browser. This branch (`in-browser`) deploys as its own Vercel project; `main` is the key-based version.
+Live call coach with no API keys: transcribes both sides of a call, reads the play after every line, coaches you in real time, and writes a recap when you stop, which you can download as one file. Speech to text and the coach model run in the browser. There is no sign-in, and the server stores nothing about your calls. This branch (`in-browser`) deploys as its own Vercel project; `main` is the key-based version.
 
 - **Transcription:** mic (YOU) and a shared tab (THEM) each go through a small voice detector that cuts at 0.7 s pauses. Each utterance is transcribed by Moonshine base (transformers.js, WebGPU or CPU) in a Web Worker. About 155 MB, downloaded once.
 - **Strategy, coach and recap:** a local model with JSON-schema output. "Auto" uses Chrome's built-in Gemini Nano when it's already on disk, otherwise Qwen 3.5 2B (4-bit, about 1.3 GB, WebGPU via WebLLM) in a Web Worker. The sidebar can force either.
 - **Efficiency readout:** the sidebar shows model size, load time, how far text lags behind speech, how many times faster than real time speech runs, tokens per second, last answer time, the model cache on disk and page memory. `/check` loads and times both models before a call and has a mic test.
-- **Scorecard:** a second tab on the recap, in the app and in shared recaps. Talk ratio, questions asked on each side and your longest turn come from the transcript. Goals from the call context (hit, partly, missed) and each objection with how it was handled come from the recap. Every row jumps to its line.
-- **Sharing:** "Share recap" makes `/r/<random id>` and an 8-character code, shown once. Only a salted hash of the code is stored. A correct code sets a cookie for that one recap for 14 days. 5 wrong codes lock it for 15 minutes. The recap never includes the call context box. Revoke deletes it.
-- **Access:** the app and its API sit behind `APP_PASSCODE` (signed HttpOnly cookie, 30 days; 10 wrong tries lock login for 15 minutes).
+- **Scorecard:** a second tab on the recap, in the app and in the downloaded file. Talk ratio, questions asked on each side and your longest turn come from the transcript. Goals from the call context (hit, partly, missed) and each objection with how it was handled come from the recap. Every row jumps to its line.
+- **Recaps:** "Download recap" saves the recap, Scorecard and transcript as one HTML file that opens in any browser. The server builds the file and keeps nothing. The call context box is never in it.
 
 ## Using it on a call
 
@@ -27,11 +26,11 @@ The context box (who, goals, facts not to overstate) goes into every coach, stra
 - **Selling:** the sales coach. Phases run opener, rapport, discovery, pitch, objection, closing, wrap-up. The recap covers goals, objections, the next step and a follow-up email.
 - **Learning:** for a call where the other person knows more. It pushes clarifying, why, example and tradeoff questions instead of "and then what". Phases run orient, explain, probe, example, apply, recap. The recap lists what you learned, the questions you asked and the ones you missed, and a thank-you note.
 
-Shared recaps never include the context box.
+Downloaded recaps never include the context box.
 
 ## History
 
-Calls are saved in this browser (IndexedDB), with the context and coach style they ran with. There are no accounts, so another browser or computer starts empty. "Bring in older calls" copies calls that an earlier version saved on the server into this browser, once; the server copies stay.
+Calls are saved in this browser (IndexedDB), with the context and coach style they ran with. There are no accounts, so another browser or computer starts empty, and nothing is kept on the server.
 
 ## The live screen
 
@@ -41,25 +40,25 @@ Calls are saved in this browser (IndexedDB), with the context and coach style th
 
 ## Sharing a recap
 
-Stop the call, press Share recap, and send the link and the code separately. The code is shown once. The link works for 14 days, 5 wrong codes lock it for 15 minutes, and Revoke in the sidebar deletes it at once. Share links must come from the production URL, since previews sit behind Vercel's login.
+Stop the call and press Download recap. Send the file however you like: email, Slack, a shared drive. Anyone can open it in a browser; it needs no account and no connection to this app.
+
+Links shared by an earlier version (`/r/<id>` plus a code) still open with their code until they expire, and the browser that shared one can revoke it from the sidebar.
 
 ## Run locally
 
 ```
-cp .env.example .env   # set APP_PASSCODE
+cp .env.example .env   # nothing to set
 npm install
 npm start              # http://localhost:4777
 ```
 
-Locally, recaps save to `./data` (gitignored). `node report.mjs <session-id>` writes a standalone replay page to `reports/` from a session that an earlier version saved in `./sessions`.
+`node report.mjs <session-id>` writes a standalone replay page to `reports/` from a session that an earlier version saved in `./sessions`.
 
 ## Deploy to Vercel
 
 1. Import this repo as a new Vercel project with `in-browser` as its production branch. `vercel.json` runs `npm run build` (bundles the workers and copies the ONNX runtime into `public/`) and routes pages to `api/index.mjs`.
 2. Settings → Git → Ignored Build Step: `[ "$VERCEL_GIT_COMMIT_REF" != "in-browser" ]`, so pushes to other branches don't build here.
-3. Storage: create a **private** Blob store and connect it to the project (this sets the Blob credentials).
-4. Settings → Environment Variables: `APP_PASSCODE` only. The cookie signing key is derived from it and the Blob token (set `SESSION_SECRET` to override). No AI keys.
-5. Redeploy, open the URL, enter the passcode. `/check` is public and tests the browser without signing in.
+3. No environment variables and no storage are needed. Open the URL and start a call. `/check` tests the browser and loads the models.
 
 See [SECURITY.md](SECURITY.md) for what is and isn't hardened, and `/how-it-works` in the app for the pipeline.
 

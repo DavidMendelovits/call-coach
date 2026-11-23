@@ -63,7 +63,7 @@
     await done(t);
   }
 
-  // A random id for this browser. Shared recaps are tagged with a hash of it so each browser lists only its own.
+  // A random id for this browser. Links shared by an earlier version are tagged with a hash of it, so each browser lists and revokes only its own.
   let fallbackKey = null;
   function browserKey() {
     try {
@@ -146,7 +146,7 @@
       if (del) {
         e.stopPropagation();
         const m = all.find((x) => x.id === del.dataset.del);
-        if (!confirm(`Delete "${name(m || {})}" from this browser? This can't be undone. Shared recap links keep working until they expire or you revoke them.`)) return;
+        if (!confirm(`Delete "${name(m || {})}" from this browser? This can't be undone. Recap files you downloaded stay where you saved them.`)) return;
         await del_(del.dataset.del); return;
       }
       const c = e.target.closest(".hcard[data-id]"); if (c) openRow(c.dataset.id);

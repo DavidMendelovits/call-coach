@@ -128,12 +128,12 @@
       <h2>Design choices</h2>
       <ul>
         <li><b>Speaker = source.</b> Mic is ME, tab is THEM. No diarization model needed, and labels are never wrong (unless your speakers bleed into the mic, so wear headphones).</li>
-        <li><b>No keys, nothing sent for AI.</b> Speech to text and the coach run on this computer. Audio and transcript never go to an AI service. The server only stores sessions and shared recaps.</li>
+        <li><b>No keys, nothing sent for AI.</b> Speech to text and the coach run on this computer. Audio and transcript never go to an AI service. There is no sign-in, and the server stores nothing about your calls.</li>
         <li><b>Two coach models.</b> Auto uses Chrome's built-in Gemini Nano when it's already on disk, and Qwen 3.5 2B (4-bit, WebGPU) otherwise. Both return a fixed JSON schema.</li>
         <li><b>Downloads once.</b> Moonshine (about 155 MB) and Qwen (about 1.3 GB) are cached by the browser after the first load. “Check this computer” loads and times them before a call.</li>
-        <li><b>Context is per call.</b> The context box (who, goals, facts not to overstate) goes into every coach, strategy and recap call. Presets fill it; each saved session keeps the context it ran with. It never goes into a shared recap.</li>
+        <li><b>Context is per call.</b> The context box (who, goals, facts not to overstate) goes into every coach, strategy and recap call. Presets fill it; each saved session keeps the context it ran with. It never goes into a downloaded recap.</li>
         <li><b>Recap on Stop.</b> One pass of the local model over the numbered transcript (long calls keep the most recent part that fits): summary, what went well, misses linked to their line, next step, follow-up email draft, CRM notes.</li>
-        <li><b>Sharing.</b> “Share recap” makes a link with a random id and an 8-character code, shown once. Send them separately. 5 wrong codes lock the recap for 15 minutes; it expires after 14 days; Revoke deletes it at once.</li>
+        <li><b>Recaps.</b> “Download recap” saves the recap, Scorecard and transcript as one HTML file that opens in any browser. The server builds it and keeps nothing. Send the file however you like.</li>
         <li><b>A voice detector cuts turns at pauses</b> (0.7s), tracking each lane's background noise. Monologues are cut every 14s so text keeps coming.</li>
         <li><b>One coach call in flight.</b> New lines during a call mark it dirty; it re-runs once when done. Never queues a backlog.</li>
         <li><b>Structured output.</b> The model is constrained to a fixed JSON schema, so the UI can't break on a chatty reply.</li>
