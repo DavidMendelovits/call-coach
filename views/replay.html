@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Call Replay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Layout: replay. Phase timeline on top; transcript left, sticky "at this moment" panel right */
+  :root {
+    --bg:#121314; --surface:#1a1b1c; --raised:#212223; --line:#2d2b27; --line2:#3d3a34; --fg:#e9e4da; --dim:#9a9488; --faint:#6f6a61; --on-fg:#121314;
+    --accent:var(--fg); --me:#ffb547; --them:#5ff0d0; --hot:#ff5a3c; --ok:#8fe388;
+    --p-opener:#46494e; --p-rapport:#5a5e64; --p-discovery:#71757b; --p-pitch:#8b8f95; --p-objection:#d1513a; --p-closing:#b3b7bc; --p-wrap-up:#d6d8db;
+    --p-orient:#46494e; --p-explain:#71757b; --p-probe:#8fe388; --p-example:#8b8f95; --p-apply:#b3b7bc; --p-recap:#d6d8db;
+    --t-cold:#2b3532; --t-neutral:#3c5650; --t-warm:#3fa894; --t-hot:#5ff0d0;
+    --sans:"JetBrains Mono", ui-monospace, Menlo, monospace; --mono:"JetBrains Mono", ui-monospace, Menlo, monospace; --display:"Chakra Petch", "JetBrains Mono", sans-serif;
+    color-scheme:dark;
+  }
+
+  * { box-sizing:border-box }
+  html, body { height:100% }
+  body { background:var(--bg); color:var(--fg); font:14px/1.55 var(--sans); -webkit-font-smoothing:antialiased }
+  .wrap { max-width:1240px; margin:0 auto; padding-block:24px 40px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); display:flex; flex-direction:column; gap:18px }
+  header { display:flex; align-items:center; gap:12px; flex-wrap:wrap }
+  .logo { width:28px; height:28px; border-radius:6px; background:var(--fg); color:var(--on-fg); display:grid; place-items:center; font:700 14px/1 var(--display) }
+  h1 { font:700 19px/1.2 var(--display); margin:0; letter-spacing:.02em; text-wrap:balance }
+  .meta { display:flex; gap:8px; flex-wrap:wrap; flex-basis:100% }
+  .chip { font:500 12px var(--mono); color:var(--dim); background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:3px 8px; font-variant-numeric:tabular-nums }
+  .chip.note { color:var(--fg); border-color:var(--line2) }
+
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:10px }
+  .timeline { padding:14px 16px; display:flex; flex-direction:column; gap:10px }
+  .label { font:600 11px/1.3 var(--mono); color:var(--dim); letter-spacing:.08em; text-transform:uppercase }
+  .bar { display:flex; height:28px; border-radius:6px; overflow:hidden; gap:2px }
+  .seg { all:unset; cursor:pointer; min-width:3px; position:relative; transition:filter .15s, outline-color .15s; outline:2px solid transparent; outline-offset:-2px }
+  .seg:hover { filter:brightness(1.15) } .seg.on { outline-color:var(--fg) }
+  .seg:focus-visible { outline-color:var(--fg) }
+  .temps { display:flex; height:6px; border-radius:3px; overflow:hidden }
+  .temps span { display:block }
+  .axis { display:flex; justify-content:space-between; font:11px var(--mono); color:var(--faint); font-variant-numeric:tabular-nums }
+  .legend { display:flex; gap:6px; flex-wrap:wrap }
+  .lg { all:unset; cursor:pointer; display:flex; align-items:center; gap:6px; font-size:12.5px; padding:4px 9px; border:1px solid var(--line); border-radius:6px; color:var(--fg); background:var(--bg) }
+  .lg i { width:9px; height:9px; border-radius:2px; display:block }
+  .lg small { color:var(--dim); font-family:var(--mono); font-size:11px }
+  .lg:hover, .lg.on { border-color:var(--fg) }
+  .lg:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
+  .lg[disabled] { opacity:.4; cursor:default }
+  .hint { color:var(--dim); font-size:12.5px }
+
+  .grid { display:grid; grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); gap:16px; align-items:start }
+  @media (max-width: 860px) { .grid { grid-template-columns: minmax(0,1fr) } }
+  .transcript { padding:8px 0 }
+  .ln { all:unset; box-sizing:border-box; display:grid; grid-template-columns:44px 52px minmax(0,1fr); gap:8px; width:100%; padding:6px 16px 6px 12px; cursor:pointer; position:relative }
+  .ln::before { content:""; position:absolute; left:4px; top:12px; width:4px; height:4px; border-radius:50%; background:var(--pc, transparent) }
+  .ln:hover { background:var(--raised) } .ln.on { background:var(--raised); box-shadow:inset 0 0 0 1px var(--line2) }
+  .ln:focus-visible { outline:2px solid var(--accent); outline-offset:-2px }
+  .ln time { font:11px var(--mono); color:var(--faint); padding-top:3px; font-variant-numeric:tabular-nums }
+  .ln b { font:600 11px var(--mono); letter-spacing:.04em; padding:2px 6px; border-radius:4px; align-self:start; text-align:center }
+  .ln.me b { color:var(--me); background:color-mix(in srgb, var(--me) 13%, transparent) }
+  .ln.them b { color:var(--them); background:color-mix(in srgb, var(--them) 13%, transparent) }
+  .ln span { min-width:0; overflow-wrap:anywhere }
+  .sn { margin:2px 16px 8px 116px; padding:5px 10px; border:1px dashed var(--line2); border-radius:6px; font-size:12.5px; color:var(--dim) }
+  .sn em { font-style:normal; font:600 11px var(--mono); color:var(--fg); margin-right:6px; text-transform:uppercase }
+  @media (max-width: 560px) { .ln { grid-template-columns:52px minmax(0,1fr) } .ln time { display:none } .sn { margin-left:16px } }
+
+  .moment { position:sticky; top:max(12px, env(safe-area-inset-top, 0px)); padding:16px 18px; display:flex; flex-direction:column; gap:12px; max-height:calc(100vh - 24px); overflow:auto }
+  @media (max-width: 860px) { .moment { position:sticky; top:auto; bottom:0; max-height:46vh; z-index:2; box-shadow:0 -8px 24px color-mix(in srgb, var(--bg) 70%, transparent) } .grid > .moment { order:-1 } }
+  .mhead { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap }
+  .pill { font:600 11px var(--mono); padding:2px 8px; border-radius:4px; color:var(--on-fg); text-transform:uppercase }
+  .temp { font:600 11px var(--mono); padding:2px 8px; border-radius:5px; color:var(--tc); background:color-mix(in srgb, var(--tc) 16%, transparent) }
+  .play { font:600 16px/1.4 var(--display); line-height:1.35; text-wrap:balance }
+  .kv { display:grid; grid-template-columns:auto minmax(0,1fr); gap:4px 12px; font-size:13px }
+  .kv dt { color:var(--dim) } .kv dd { margin:0 }
+  .coach { border-top:1px solid var(--line); padding-top:12px; display:flex; flex-direction:column; gap:8px }
+  .now { font-size:15.5px; font-weight:600 }
+  .watch { color:var(--hot); font-weight:500; font-size:13.5px }
+  .q { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 11px }
+  .q div:first-child { font-weight:600 } .q div:last-child { color:var(--dim); font-size:12.5px }
+  ul { margin:0; padding-left:18px; display:flex; flex-direction:column; gap:3px; font-size:13px } li::marker { color:var(--faint) }
+  .covered li { color:var(--dim) }
+  .sub { font-size:11.5px; font-weight:600; color:var(--dim); letter-spacing:.05em; text-transform:uppercase; margin-top:4px }
+  .nav { display:flex; gap:6px }
+  .nav button { all:unset; cursor:pointer; font:500 12px var(--mono); padding:3px 9px; border:1px solid var(--line); border-radius:6px; color:var(--dim) }
+  .nav button:hover { color:var(--fg); border-color:var(--fg) }
+  .nav button:focus-visible { outline:2px solid var(--accent) }
+  #err { color:var(--hot) }
+  .review { padding:16px 18px; display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:6px 28px }
+  @media (max-width: 860px) { .review { grid-template-columns:minmax(0,1fr) } }
+  .review h2 { grid-column:1/-1; font-size:15px; margin:0 }
+  .review .summary { grid-column:1/-1; font-size:15px; margin:0 0 6px; text-wrap:pretty }
+  .review .col { display:flex; flex-direction:column; gap:6px; min-width:0 }
+  .miss { all:unset; box-sizing:border-box; display:block; cursor:pointer; padding:7px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg) }
+  .miss:hover { border-color:var(--line2) } .miss:focus-visible { outline:2px solid var(--accent) }
+  .miss small { font:500 11px var(--mono); color:var(--faint); margin-right:6px }
+  .miss .better { color:var(--p-closing); font-size:13px; margin-top:2px }
+  .email { white-space:pre-wrap; font-size:13px; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:0 }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; scroll-behavior:auto !important } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="logo">S</div>
+    <h1 id="title">Call replay</h1>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <section class="card timeline" aria-label="Call phases">
+    <div class="label">How the call moved</div>
+    <div class="bar" id="bar"></div>
+    <div class="temps" id="temps" title="Temperature: how warm the other side was"></div>
+    <div class="axis" id="axis"></div>
+    <div class="legend" id="legend"></div>
+    <div class="hint">Click a phase to jump through every stretch of the call in that phase. Click any line to see what the coach was saying at that moment. Keys: ← → step through strategy changes.</div>
+  </section>
+
+  <section class="card review" id="review" hidden aria-label="Recap"></section>
+
+  <div class="grid">
+    <section class="card transcript" id="transcript" aria-label="Transcript"><p id="err" style="padding:0 16px">Loading…</p></section>
+    <aside class="card moment" id="moment" aria-live="polite"></aside>
+  </div>
+</div>
+
+<!--DATA-->
+<script src="/modes.js"></script>
+<script src="/scorecard.js"></script>
+<script>
+const MODE = window.CoachModes ? CoachModes.get(window.REPLAY?.mode) : { phases: ["opener", "rapport", "discovery", "pitch", "objection", "closing", "wrap-up"], care: "They care about", misses: "Misses", notes: "CRM notes", email: "Follow-up email" };
+const PHASES = MODE.phases;
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const secs = (t) => { const m = String(t || "").match(/(\d\d):(\d\d):(\d\d)/); return m ? +m[1] * 3600 + +m[2] * 60 + +m[3] : null };
+const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+try { boot(window.REPLAY) } catch (e) { $("#err").textContent = "Couldn't load the call data: " + e.message }
+
+function boot(S) {
+  const L = S.lines, N = L.length;
+  // elapsed seconds per line (handles crossing midnight UTC)
+  const t0 = secs(L[0].t); let off = 0, last = t0;
+  const el = L.map((l) => { let s = secs(l.t); if (s == null) return null; if (s + off < last - 3600) off += 86400; last = s + off; return s + off - t0 });
+  // strategy as of each line: the latest read that had seen ≤ i+1 lines
+  const st = new Array(N); let k = 0, cur = null;
+  const SH = [...S.strategyHistory].sort((a, b) => a.at - b.at);
+  for (let i = 0; i < N; i++) { while (k < SH.length && SH[k].at <= i + 1) cur = SH[k++].strategy; st[i] = cur }
+  // ponytail: raw per-line phase flickers; majority over a ±4-line window shows the arc. Upgrade: HMM / min-run-length if it still jitters.
+  const raw = st.map((s) => s?.phase || PHASES[0]);
+  const phase = raw.map((_, i) => {
+    const c = {}; for (let j = Math.max(0, i - 4); j <= Math.min(N - 1, i + 4); j++) c[raw[j]] = (c[raw[j]] || 0) + 1 + (j === i ? 0.5 : 0);
+    return Object.entries(c).sort((a, b) => b[1] - a[1])[0][0];
+  });
+  const segs = []; phase.forEach((p, i) => (segs.at(-1)?.p === p ? segs.at(-1).n++ : segs.push({ p, start: i, n: 1 })));
+  const coachAt = (i) => [...S.coachHistory].filter((h) => h.at <= i + 1).at(-1)?.coach || S.coachHistory[0]?.coach;
+
+  // header
+  const words = { me: 0, them: 0 }; L.forEach((l) => (words[l.who] += l.text.split(/\s+/).length));
+  const tot = words.me + words.them, dur = el.at(-1);
+  $("#title").textContent = S.title || "Call replay";
+  document.title = S.title || "Call Replay";
+  const d = new Date(S.startedAt);
+  $("#meta").innerHTML = [
+    isNaN(d) ? "" : d.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }),
+    dur ? `${Math.round(dur / 60)} min` : "", `${N} turns`,
+    `you ${Math.round(100 * words.me / tot)}% · them ${Math.round(100 * words.them / tot)}% of words`,
+  ].filter(Boolean).map((x) => `<span class="chip">${esc(x)}</span>`).join("")
+    + (S.reconstructed ? `<span class="chip note">strategy &amp; coach replayed from the transcript after the call</span>` : "");
+
+  // timeline
+  $("#bar").innerHTML = segs.map((s, j) => `<button class="seg" data-j="${j}" style="flex:${s.n};background:var(--p-${s.p})" title="${s.p} · lines ${s.start + 1}–${s.start + s.n}" aria-label="${s.p}, lines ${s.start + 1} to ${s.start + s.n}"></button>`).join("");
+  $("#temps").innerHTML = st.map((s) => `<span style="flex:1;background:var(--t-${s?.temperature || "neutral"})"></span>`).join("");
+  $("#axis").innerHTML = dur ? [0, .25, .5, .75, 1].map((f) => `<span>${mmss(Math.round(dur * f))}</span>`).join("") : "";
+  const share = {}; segs.forEach((s) => (share[s.p] = (share[s.p] || 0) + s.n));
+  $("#legend").innerHTML = PHASES.map((p) => `<button class="lg" data-p="${p}" ${share[p] ? "" : "disabled"}><i style="background:var(--p-${p})"></i>${p}<small>${share[p] ? Math.round(100 * share[p] / N) + "%" : "–"}</small></button>`).join("");
+
+  // margin note only when the call's phase or temperature shifts, or 10 lines pass without one (every line gets a fresh read; showing all is noise)
+  let lastKey = "", lastAt = -99, html = "";
+  L.forEach((l, i) => {
+    html += `<button class="ln ${l.who}" data-i="${i}" style="--pc:var(--p-${phase[i]})"><time>${el[i] != null ? mmss(el[i]) : ""}</time><b>${l.who.toUpperCase()}</b><span>${esc(l.text)}</span></button>`;
+    const s = st[i], key = phase[i] + "|" + (s?.temperature || "");
+    if (s && (key !== lastKey || i - lastAt >= 10)) { lastKey = key; lastAt = i; html += `<div class="sn" style="--pc:var(--p-${phase[i]})"><em>${esc(phase[i])}</em>${esc(s.play)}</div>` }
+  });
+  $("#transcript").innerHTML = html;
+  const rows = [...document.querySelectorAll(".ln")];
+
+  let sel = N - 1;
+  function show(i, scroll) {
+    sel = Math.max(0, Math.min(N - 1, i));
+    rows.forEach((r) => r.classList.toggle("on", +r.dataset.i === sel));
+    document.querySelectorAll(".seg").forEach((b) => { const s = segs[+b.dataset.j]; b.classList.toggle("on", sel >= s.start && sel < s.start + s.n) });
+    document.querySelectorAll(".lg").forEach((b) => b.classList.toggle("on", b.dataset.p === phase[sel]));
+    if (scroll) rows[sel].scrollIntoView({ block: "center", behavior: "smooth" });
+    const s = st[sel] || {}, c = coachAt(sel) || {};
+    $("#moment").innerHTML = `
+      <div class="mhead"><span class="label">At ${el[sel] != null ? mmss(el[sel]) : "line " + (sel + 1)} · line ${sel + 1}/${N}</span>
+        <span class="nav"><button data-step="-1" aria-label="Previous strategy change">←</button><button data-step="1" aria-label="Next strategy change">→</button></span></div>
+      <div class="mhead" style="justify-content:flex-start"><span class="pill" style="background:var(--p-${s.phase || PHASES[0]})">${esc(s.phase || "–")}</span>
+        <span class="temp" style="--tc:var(--t-${s.temperature || "neutral"})">${esc(s.temperature || "")}</span></div>
+      <div class="play">${esc(s.play || "–")}</div>
+      <dl class="kv"><dt>${MODE.care}</dt><dd>${esc(s.they_care_about || "–")}</dd><dt>Avoid</dt><dd>${esc(s.avoid || "–")}</dd></dl>
+      <div class="coach">
+        <div class="sub">Coach</div>
+        <div class="now">${esc(c.now || "")}</div>
+        ${c.watch ? `<div class="watch">⚠ ${esc(c.watch)}</div>` : ""}
+        ${(c.ask || []).map((a) => `<div class="q"><div>${esc(a.q)}</div><div>${esc(a.why)}</div></div>`).join("")}
+        ${c.loose_ends?.length ? `<div class="sub">Loose ends</div><ul>${c.loose_ends.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+        ${c.covered?.length ? `<div class="sub">Covered</div><ul class="covered">${c.covered.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+      </div>`;
+  }
+  const changes = SH.map((h) => h.at - 1).filter((i, j, a) => i >= 0 && i < N && (j === 0 || st[i]?.play !== st[a[j - 1]]?.play));
+  const step = (dir) => { const nxt = dir > 0 ? changes.find((i) => i > sel) : [...changes].reverse().find((i) => i < sel); if (nxt != null) show(nxt, true) };
+
+  document.addEventListener("click", (e) => {
+    const ln = e.target.closest(".ln"), seg = e.target.closest(".seg"), lg = e.target.closest(".lg"), nv = e.target.closest("[data-step]");
+    if (ln) show(+ln.dataset.i);
+    else if (seg) show(segs[+seg.dataset.j].start, true);
+    else if (lg && !lg.disabled) { // cycle through this phase's stretches
+      const mine = segs.filter((s) => s.p === lg.dataset.p);
+      const next = mine.find((s) => s.start > sel) || mine[0];
+      show(next.start, true);
+    } else if (nv) step(+nv.dataset.step);
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "ArrowRight") step(1); if (e.key === "ArrowLeft") step(-1) });
+
+  // post-call recap, when the call has one; each miss jumps to its line
+  const R = S.review;
+  if (R) {
+    const list = (xs) => `<ul>${xs.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
+    const recapHTML = `<p class="summary">${esc(R.summary)}</p>
+      <div class="col">
+        ${R.misses?.length ? `<div class="sub">${MODE.misses}</div>${R.misses.map((m) => `<button class="miss" data-line="${+m.line}"><small>line ${+m.line}</small>${esc(m.what)}<div class="better">Try: ${esc(m.better)}</div></button>`).join("")}` : ""}
+        ${R.went_well?.length ? `<div class="sub">Went well</div>${list(R.went_well)}` : ""}
+      </div>
+      <div class="col">
+        <div class="sub">Next step</div><div>${esc(R.next_step)}</div>
+        ${R.crm_notes?.length ? `<div class="sub">${MODE.notes}</div>${list(R.crm_notes)}` : ""}
+        ${R.follow_up_email ? `<div class="sub">${MODE.email} draft</div><pre class="email">Subject: ${esc(R.follow_up_email.subject)}\n\n${esc(R.follow_up_email.body)}</pre>` : ""}
+      </div>`;
+    let tab = "recap";
+    const paint = () => {
+      const tabs = `<span class="sc-tabs" role="tablist">${[["recap", "Recap"], ["scorecard", "Scorecard"]].map(([k, t]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${t}</button>`).join("")}</span>`;
+      $("#review").innerHTML = `<h2>${window.Scorecard ? tabs : "Recap"}</h2>` + (tab === "scorecard" ? `<div style="grid-column:1/-1">${Scorecard.html(R, S.lines, S.mode)}</div>` : recapHTML);
+    };
+    paint();
+    $("#review").hidden = false;
+    $("#review").addEventListener("click", (e) => {
+      const t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; paint(); return }
+      const b = e.target.closest(".miss, .sc-jump"); if (b) { e.stopPropagation(); show(+b.dataset.line - 1, true) }
+    });
+  }
+  show(N - 1);
+}
+</script>

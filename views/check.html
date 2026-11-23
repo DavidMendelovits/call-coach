@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Check This Computer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+  :root { --bg:#121314; --card:#1a1b1c; --raise:#212223; --line:#2d2b27; --line2:#3d3a34; --fg:#e9e4da; --on-fg:#121314; --dim:#9a9488; --hot:#ff5a3c; --ok:#8fe388;
+    --mono:"JetBrains Mono",ui-monospace,Menlo,monospace; --display:"Chakra Petch","JetBrains Mono",sans-serif; color-scheme:dark }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.55 var(--mono); padding:24px 16px; -webkit-font-smoothing:antialiased }
+  main { max-width:640px; margin:0 auto; display:flex; flex-direction:column; gap:14px }
+  h1 { font:700 19px/1.2 var(--display); letter-spacing:.02em; margin:0 } p { margin:0; color:var(--dim) }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:8px }
+  h2 { font:600 11px/1.3 var(--mono); margin:0; color:var(--dim); text-transform:uppercase; letter-spacing:.08em }
+  button, select { font:500 12.5px/1.2 var(--mono); padding:8px 12px; border-radius:6px; border:1px solid var(--line2); background:var(--raise); color:var(--fg); cursor:pointer; box-shadow:0 2px 0 #0b0c0c }
+  button:active:not(:disabled) { transform:translateY(2px); box-shadow:none }
+  button.primary { background:var(--fg); color:var(--on-fg); border-color:var(--fg); font-weight:600; box-shadow:0 2px 0 #77716a }
+  button:disabled { opacity:.4; cursor:default; box-shadow:none }
+  button:focus-visible, select:focus-visible { outline:2px solid var(--fg); outline-offset:2px }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+  dl { display:grid; grid-template-columns:max-content 1fr; gap:4px 14px; margin:0 } dt { color:var(--dim) } dd { margin:0 }
+  .ok { color:var(--ok) } .no { color:var(--hot) }
+  pre { white-space:pre-wrap; word-break:break-word; margin:0; font:12.5px/1.5 var(--mono); color:var(--dim); max-height:320px; overflow:auto }
+  #aistats .st { margin:2px 0 } #aistats .st b { color:var(--fg); font-weight:500 } #aistats .st.err b { color:var(--hot) }
+  #aistats .bar { height:3px; background:var(--line); border-radius:2px; overflow:hidden; margin-top:3px } #aistats .bar i { display:block; height:100%; background:var(--fg) }
+</style>
+</head>
+<body>
+<main>
+  <h1>Check this computer</h1>
+  <p>Downloads the on-device models once, then times them. Nothing you say here is saved or sent anywhere.</p>
+  <section><h2>This browser</h2><dl id="caps"><dt>Checking…</dt><dd></dd></dl></section>
+  <section>
+    <h2>Models</h2>
+    <div class="row">
+      <select id="engine">
+        <option value="auto">Coach model: auto</option>
+        <option value="chrome">Chrome built-in (Gemini Nano)</option>
+        <option value="qwen">Qwen 3.5 2B (WebGPU)</option>
+      </select>
+      <button id="load" class="primary">Load models</button>
+    </div>
+    <div id="aistats"></div>
+  </section>
+  <section>
+    <h2>Speech test</h2>
+    <p>Say a sentence or two. It records 6 seconds, then transcribes on this computer.</p>
+    <div class="row"><button id="rec">Record 6 seconds</button><span id="recst"></span></div>
+    <pre id="heard"></pre>
+  </section>
+  <section>
+    <h2>Coach test</h2>
+    <p>Runs the live coach once on a short sample call.</p>
+    <div class="row"><button id="coach">Run the coach</button><span id="coachst"></span></div>
+    <pre id="coachout"></pre>
+  </section>
+</main>
+<script type="module" src="/local.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const SAMPLE = {
+  context: "Design review. I'm pitching a nightly pipeline that turns news articles into ranked accounts for a BDR team. Goals: summary in under a minute, ask what he cares about, close on a pilot with a start date.",
+  transcript: "ME: Thanks for the time. Quick summary: every night the pipeline turns new articles into a ranked list of accounts for the BDRs.\nTHEM: Okay. What does it cost to run, and what happens when the nightly job fails?\nME: It's one scheduled job, so it's cheap. I haven't timed the run yet.\nTHEM: My worry is a team of two maintaining yet another pipeline.",
+};
+function ready() {
+  const L = window.LocalAI;
+  L.onStats = (s) => { $("#aistats").innerHTML = L.statsHTML(s) };
+  $("#engine").value = L.engine;
+  $("#engine").onchange = () => L.switchEngine($("#engine").value);
+  $("#load").onclick = () => { L.startSTT().catch(() => {}); L.startLLM().catch(() => {}) };
+  (async () => {
+    const yes = (v, t) => `<span class="${v ? "ok" : "no"}">${t}</span>`;
+    let gpu = "none";
+    try { const a = navigator.gpu && await navigator.gpu.requestAdapter(); if (a) { const i = a.info || {}; gpu = [i.vendor, i.architecture, i.description].filter(Boolean).join(" ") || "available" } } catch {}
+    const chrome = await L.chromeAvailability();
+    let disk = ""; try { const e = await navigator.storage.estimate(); disk = `${(e.quota / 1e9).toFixed(0)} GB allowed for this site` } catch {}
+    $("#caps").innerHTML = [
+      ["WebGPU", gpu !== "none" ? yes(1, gpu) : yes(0, "not available: speech runs on the CPU, Qwen can't run")],
+      ["Chrome built-in AI", { available: yes(1, "ready"), downloadable: yes(1, "can download (Chrome manages it)"), downloading: yes(1, "downloading") }[chrome] || yes(0, "not available")],
+      ["Memory", navigator.deviceMemory ? `${navigator.deviceMemory} GB or more` : "not reported"],
+      ["Storage", disk || "not reported"],
+    ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  })();
+  $("#rec").onclick = async () => {
+    const btn = $("#rec"); btn.disabled = true; $("#heard").textContent = "";
+    try {
+      $("#recst").textContent = "loading the speech model…";
+      await L.startSTT();
+      const mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      const actx = new AudioContext({ sampleRate: 16000 });
+      await actx.audioWorklet.addModule("/pcm-worklet.js");
+      const node = new AudioWorkletNode(actx, "pcm"), parts = [];
+      node.port.onmessage = ({ data }) => parts.push(data.pcm);
+      actx.createMediaStreamSource(mic).connect(node);
+      for (let s = 6; s > 0; s--) { $("#recst").textContent = `recording… ${s}`; await new Promise((r) => setTimeout(r, 1000)) }
+      mic.getTracks().forEach((t) => t.stop()); await actx.close();
+      const audio = new Float32Array(parts.reduce((n, p) => n + p.length, 0)); let o = 0; for (const p of parts) { audio.set(p, o); o += p.length }
+      $("#recst").textContent = "transcribing…";
+      const t0 = performance.now(), text = await L.transcribe(audio, performance.now());
+      const ms = performance.now() - t0;
+      $("#heard").textContent = text || "(heard nothing)";
+      $("#recst").textContent = `${(audio.length / 16000).toFixed(1)} s of audio in ${(ms / 1000).toFixed(2)} s`;
+    } catch (e) { $("#recst").textContent = "didn't work: " + e.message }
+    btn.disabled = false;
+  };
+  $("#coach").onclick = async () => {
+    const btn = $("#coach"); btn.disabled = true; $("#coachout").textContent = "";
+    try {
+      $("#coachst").textContent = "loading the coach model (first time downloads it)…";
+      await L.startLLM();
+      $("#coachst").textContent = "thinking…";
+      const t0 = performance.now(), out = await L.coach(SAMPLE);
+      $("#coachout").textContent = JSON.stringify(out, null, 2);
+      $("#coachst").textContent = `answered in ${((performance.now() - t0) / 1000).toFixed(1)} s`;
+    } catch (e) { $("#coachst").textContent = "didn't work: " + e.message }
+    btn.disabled = false;
+  };
+}
+window.LocalAI ? ready() : addEventListener("localai", ready, { once: true });
+</script>
+</body>
+</html>

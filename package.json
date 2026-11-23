@@ -1,0 +1,23 @@
+{
+  "name": "call-coach-local",
+  "version": "1.0.0",
+  "description": "Live call coach with no API keys: speech to text and the coach model run in the browser",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node build.mjs && node --env-file=.env dev.mjs",
+    "report": "node report.mjs"
+  },
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@vercel/blob": "^2.9.0"
+  },
+  "devDependencies": {
+    "@huggingface/transformers": "4.3.1",
+    "@mlc-ai/web-llm": "0.2.87",
+    "esbuild": "0.25.12"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

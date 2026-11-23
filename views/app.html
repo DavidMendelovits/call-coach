@@ -1,0 +1,963 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Call Coach</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-rec" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 16 16"><rect x="4" y="4" width="8" height="8" rx="1.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-new" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 16 16"><path d="M8 10.5V2.5M5 5.5l3-3 3 3M3 10v2.5h10V10"/></symbol>
+  <symbol id="i-history" viewBox="0 0 16 16"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v2.6h2.6M8 5v3l2 1.5"/></symbol>
+  <symbol id="i-share" viewBox="0 0 16 16"><path d="M9.5 2.5h4v4M13.5 2.5 7.5 8.5M12 9.5v4H2.5V4h4"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5v-3h-8v8h3"/></symbol>
+  <symbol id="i-help" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M6.3 6.2a1.8 1.8 0 1 1 2.5 1.7c-.5.2-.8.6-.8 1.1v.5M8 11.6v.1"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="M3 8.5 6.5 12 13 4.5"/></symbol>
+  <symbol id="i-out" viewBox="0 0 16 16"><path d="M6.5 2.5h-4v11h4M10 5l3 3-3 3M13 8H6"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 16 16"><rect x="5.5" y="1.5" width="5" height="8.5" rx="2.5"/><path d="M3 8a5 5 0 0 0 10 0M8 13v2"/></symbol>
+  <symbol id="i-pulse" viewBox="0 0 16 16"><path d="M1.5 8.5h3l2-5 3 9 2-4h3"/></symbol>
+  <symbol id="i-cue" viewBox="0 0 16 16"><path d="M8 2v2.5M8 11.5V14M2 8h2.5M11.5 8H14M4 4l1.8 1.8M10.2 10.2 12 12M12 4l-1.8 1.8M5.8 10.2 4 12"/></symbol>
+  <symbol id="i-down" viewBox="0 0 16 16"><path d="M8 2.5v8M5 7.5l3 3 3-3M3 13.5h10"/></symbol>
+</svg>
+<aside>
+  <div class="ws"><div class="logo">C</div><div>Call Coach</div></div>
+  <div class="transport">
+    <button id="start" class="btn primary"><svg class="i"><use href="#i-rec"/></svg>Start listening</button>
+    <button id="stop" class="btn" disabled aria-label="Stop listening"><svg class="i"><use href="#i-stop"/></svg>Stop</button>
+  </div>
+  <button id="ask" class="btn" style="margin:0 2px 6px"><svg class="i"><use href="#i-cue"/></svg>Coach me now</button>
+  <button id="clear" class="nav"><svg class="i"><use href="#i-new"/></svg>New session</button>
+  <button id="import" class="nav"><svg class="i"><use href="#i-upload"/></svg>Upload transcript</button>
+  <button class="nav" data-open-history><svg class="i"><use href="#i-history"/></svg>History</button>
+  <button id="share" class="nav" disabled><svg class="i"><use href="#i-share"/></svg>Share recap</button>
+  <button id="copy" class="nav"><svg class="i"><use href="#i-copy"/></svg>Copy transcript</button>
+  <div class="label">Inputs</div>
+  <div id="inputs"></div>
+  <select id="mic" aria-label="Microphone"></select>
+  <div hidden><i id="lv-me"></i><i id="lv-them"></i></div>
+  <div class="label">Models <button class="link" data-activity>Activity</button></div>
+  <div id="rack"></div>
+  <div id="ai">
+    <select id="engine" title="Which model writes the coaching and recap" aria-label="Coach model">
+      <option value="auto">Coach model: auto</option>
+      <option value="chrome">Chrome built-in (Gemini Nano)</option>
+      <option value="qwen">Qwen 3.5 2B (WebGPU)</option>
+    </select>
+    <button id="prep" class="btn"><svg class="i"><use href="#i-down"/></svg>Load models</button>
+    <div id="aistats"></div>
+  </div>
+  <div class="label">Recent calls <button class="link" data-open-history data-history-count></button></div>
+  <div id="sessions"></div>
+  <button class="link older-side" data-older hidden></button>
+  <div class="label">Shared recaps</div>
+  <div id="recaps"></div>
+  <div class="label">Session</div>
+  <div id="status"><span class="dot"></span>idle</div>
+  <div id="ratio"></div>
+  <div class="bottom">
+    <a class="nav" href="/how-it-works" target="_blank" rel="noopener"><svg class="i"><use href="#i-help"/></svg>How it works</a>
+    <a class="nav" href="/check" target="_blank" rel="noopener"><svg class="i"><use href="#i-check"/></svg>Check this computer</a>
+    <form method="post" action="/logout"><button class="nav"><svg class="i"><use href="#i-out"/></svg>Sign out</button></form>
+  </div>
+</aside>
+<div class="shell">
+  <div class="top">
+    <span class="ttl" id="mode">Ready</span>
+    <span class="tag live onair">ON AIR</span>
+    <span class="tag" title="Every model runs in this browser">ON-DEVICE</span>
+    <div class="scope-wrap"><canvas id="scope" aria-hidden="true"></canvas><span class="lane me">ME</span><span class="lane them">THEM</span></div>
+    <button id="jobchip" aria-label="Show progress"></button>
+    <button id="ticker" data-activity title="Every call to an AI model, with timings"><svg class="i"><use href="#i-pulse"/></svg><span id="thinking">no AI calls yet</span></button>
+  </div>
+  <main>
+    <div id="left">
+      <input id="title" placeholder="Call title, e.g. Mock design review" autocomplete="off" aria-label="Call title">
+      <details id="ctxbox" open>
+        <summary>Call context <small>who, goals, facts not to overstate. Private: never in shared recaps</small></summary>
+        <div class="presets"><label for="preset">Preset</label><select id="preset"></select><button type="button" class="mini" id="psave" title="Save this call context as a preset in this browser">Save</button><button type="button" class="mini" id="pdel" title="Delete this saved preset" hidden>Delete</button></div>
+        <div class="presets"><span id="mode-l">Coach for</span><span class="seg" role="group" aria-labelledby="mode-l"><button type="button" data-mode="sales" aria-pressed="true" title="Sales coach: discovery, objections, next step">Selling</button><button type="button" data-mode="learning" aria-pressed="false" title="Learning coach: keeps you asking clarifying and follow-up questions">Learning</button></span><button type="button" class="mini dict" id="dictate" title="Speak the call context instead of typing it" aria-pressed="false"><svg class="i" style="width:14px;height:14px"><use href="#i-mic"/></svg><span class="lbl">Dictate</span></button></div>
+        <div id="dictnote" class="dictnote" aria-live="polite"></div>
+        <textarea id="ctx" rows="12" aria-label="Call context"></textarea>
+      </details>
+      <div class="card" style="flex:1">
+        <div class="hd" id="tx-hd"><h2>Transcript</h2><span class="sub" id="txsub"></span></div>
+        <div id="tl" class="tl" hidden><div class="tlbar" id="tlbar"></div><div class="tltemp" id="tltemp"></div></div>
+        <div class="bd" id="transcript"></div>
+        <form id="inject"><input placeholder="Add a line: 'me: …' or 'them: …'" aria-label="Add a line to the transcript"><button class="btn">Add</button></form>
+      </div>
+    </div>
+    <div class="card">
+      <div class="hd"><h2>Strategy and coach</h2><span class="sub" id="stratAt"></span></div>
+      <div class="bd" id="updated">
+        <div id="after" hidden></div>
+        <div class="strat">
+          <div class="row" id="phases"></div>
+          <div id="play">Strategy updates after every line.</div>
+          <div><span class="k" id="carek">They care about</span><span id="care">–</span></div>
+          <div><span class="k">Avoid</span><span id="avoid">–</span></div>
+        </div>
+        <div id="coachsec">
+          <p id="now">Press Start listening, pick your meeting tab, and turn on “Share tab audio”.</p>
+          <div id="watch"></div>
+          <div class="sec">Ask next</div><div id="asks"></div>
+          <div class="sec" id="loosek">Loose ends</div><ul id="loose"></ul>
+          <div class="sec" id="coveredk">Covered</div><ul id="covered"></ul>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<dialog id="sharebox">
+  <h2>Recap ready to share</h2>
+  <p>Send the link and the code separately, for example the link by email and the code by text. The code is shown only once. The recap leaves out your call context.</p>
+  <div>Link</div>
+  <div class="field"><input id="shareurl" readonly aria-label="Recap link"><button class="mini" data-copy="shareurl">Copy</button></div>
+  <div>Code</div>
+  <div class="field"><input id="sharecode" class="code" readonly aria-label="Access code"><button class="mini" data-copy="sharecode">Copy</button></div>
+  <p id="shareexp"></p>
+  <form method="dialog" class="actions"><button class="btn primary">Done</button></form>
+</dialog>
+<dialog id="historybox" class="wide" aria-labelledby="hist-h">
+  <div class="dh"><h2 id="hist-h">History</h2><input type="search" placeholder="Search calls" aria-label="Search calls"><form method="dialog"><button class="mini">Close</button></form></div>
+  <div class="db"></div>
+  <div class="df"><span class="n"></span><button class="mini" data-older hidden></button><span>Saved in this browser only. No account, nothing on the server. Clearing this site's data deletes them.</span></div>
+</dialog>
+<dialog id="activitybox" class="wide" aria-labelledby="act-h">
+  <div class="dh"><h2 id="act-h">AI activity</h2><form method="dialog"><button class="mini">Close</button></form></div>
+  <div class="db">
+    <div class="models"></div>
+    <table class="alog"><thead><tr><th>Time</th><th>Call</th><th>Model</th><th class="r">Took</th><th class="r">Tokens in / out</th><th>Status</th></tr></thead><tbody></tbody></table>
+  </div>
+  <div class="df"><span>Every model runs on this computer. No audio or transcript is sent anywhere for AI.</span><span>Select a model to see only its calls.</span></div>
+</dialog>
+<div id="job" role="dialog" aria-live="polite" aria-label="Progress">
+  <div class="jh"><h2></h2><div class="sub"></div></div>
+  <div class="jbar"></div>
+  <ol></ol>
+  <div class="jf"></div>
+</div>
+<script type="module" src="/local.js"></script>
+<script src="/import.js"></script>
+<script src="/dictate.js"></script>
+<script src="/history.js"></script>
+<script src="/activity.js"></script>
+<script src="/studio.js"></script>
+<script src="/modes.js"></script>
+<script src="/scorecard.js"></script>
+<script>
+// Built-in presets. Each carries a coach style. Presets you save live in this browser only (localStorage), like history.
+const BUILTIN = {
+  "Design review": { mode: "sales", text: `Design review call. I'm pitching a design to [name, role] at [company]. Design: [one line on what it does].
+
+Facts I must not overstate:
+- [cost, scale or timing I haven't measured]
+
+Goals for this call:
+- Summary in under a minute before any detail
+- Ask what they care about before defending choices
+- For each question: state the assumption, pick one option, name the tradeoff, say how it fails and how I'd know
+- Find their real concern and address it
+- Close on a specific next step: a pilot, a start date, a success measure` },
+  "Sales discovery": { mode: "sales", text: `Sales discovery call. I'm selling [product] to [name, role] at [company].
+
+What I know about them:
+- 
+
+Facts I must not overstate:
+- 
+
+Goals for this call:
+- Ask how they work today and what it costs them before pitching
+- Find the decision maker, budget and timeline
+- Handle each objection: acknowledge, ask, then answer
+- Close on a specific next step with a date` },
+  "Learning": { mode: "learning", text: `Learning call. I'm talking with [name], who knows [topic] better than I do. I want to understand it well enough to explain it back, not just hear it.
+
+What I already know:
+-
+
+What I want to understand:
+-
+
+Goals for this call:
+- Ask a clarifying question when a term or step isn't clear
+- Ask why before they move to the next point
+- Ask for a concrete example or a real number
+- Ask what breaks, what the tradeoff is, or what they'd do differently
+- Connect it out loud to something I already know
+- Play it back in my own words and ask if that's right` },
+  "Blank": { mode: "sales", text: "" },
+};
+const DEFAULT_CTX = BUILTIN["Sales discovery"].text;
+const $ = (s) => document.querySelector(s);
+const local = { get: (k, d) => { try { return localStorage.getItem(k) ?? d } catch { return d } }, set: (k, v) => { try { localStorage.setItem(k, v) } catch {} } };
+const ctx = $("#ctx");
+ctx.value = local.get("ctx", DEFAULT_CTX);
+let coachMode = CoachModes.ok(local.get("mode", "sales"));
+const savedPresets = () => { try { const x = JSON.parse(local.get("presets", "[]")); return Array.isArray(x) ? x.filter((p) => p && typeof p.name === "string" && typeof p.text === "string") : [] } catch { return [] } };
+const preset = $("#preset");
+// the preset the box holds right now, if the text and coach style are unchanged
+function presetKey() {
+  const s = savedPresets().find((p) => p.text === ctx.value && CoachModes.ok(p.mode) === coachMode);
+  if (s) return "s:" + s.name;
+  const b = Object.entries(BUILTIN).find(([, p]) => p.text === ctx.value && p.mode === coachMode);
+  return b ? "b:" + b[0] : "";
+}
+const findPreset = (key) => (key.startsWith("b:") ? BUILTIN[key.slice(2)] : savedPresets().find((p) => "s:" + p.name === key));
+function drawPresets() {
+  const e = (x) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const saved = savedPresets(), cur = presetKey();
+  preset.innerHTML = `<option value="">${cur ? "Choose…" : "Edited, not saved"}</option>`
+    + `<optgroup label="Built in">${Object.keys(BUILTIN).map((k) => `<option value="b:${e(k)}">${e(k)}</option>`).join("")}</optgroup>`
+    + (saved.length ? `<optgroup label="Saved in this browser">${saved.map((p) => `<option value="s:${e(p.name)}">${e(p.name)}</option>`).join("")}</optgroup>` : "");
+  preset.value = cur;
+  $("#pdel").hidden = !cur.startsWith("s:");
+}
+ctx.oninput = () => { local.set("ctx", ctx.value); drawPresets() };
+preset.onchange = () => {
+  const p = findPreset(preset.value); if (!p) return drawPresets();
+  if (ctx.value.trim() && !presetKey() && !confirm("Replace the current call context with this preset? Your edits aren't saved as a preset.")) return drawPresets();
+  ctx.value = p.text; setCoachMode(p.mode); ctx.oninput();
+};
+$("#psave").onclick = () => {
+  const cur = presetKey();
+  const name = (prompt("Name this preset. It's saved in this browser only.", cur.startsWith("s:") ? cur.slice(2) : titleEl.value.trim()) || "").trim().slice(0, 60);
+  if (!name) return;
+  if (BUILTIN[name]) return alert(`"${name}" is a built-in preset. Pick another name.`);
+  const list = savedPresets(), at = list.findIndex((p) => p.name === name);
+  if (at >= 0 && !(cur === "s:" + name) && !confirm(`Replace the saved preset "${name}"?`)) return;
+  const p = { name, text: ctx.value, mode: coachMode, savedAt: new Date().toISOString() };
+  if (at >= 0) list[at] = p; else list.push(p);
+  local.set("presets", JSON.stringify(list)); drawPresets();
+  setStatus(`saved the preset "${name}" in this browser`);
+};
+$("#pdel").onclick = () => {
+  const key = presetKey(); if (!key.startsWith("s:")) return;
+  const name = key.slice(2);
+  if (!confirm(`Delete the saved preset "${name}"? The call context stays in the box.`)) return;
+  local.set("presets", JSON.stringify(savedPresets().filter((p) => p.name !== name))); drawPresets();
+};
+// coach style: Selling or Learning. It changes the prompts, the phases and a few labels, and is saved with each call.
+function modeLabels() {
+  const L = CoachModes.get(coachMode);
+  document.querySelectorAll("[data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === coachMode)));
+  $("#carek").textContent = L.care; $("#loosek").textContent = L.loose; $("#coveredk").textContent = L.covered;
+}
+function setCoachMode(m, quiet) {
+  const next = CoachModes.ok(m), changed = next !== coachMode;
+  coachMode = next; local.set("mode", coachMode); modeLabels(); drawPresets();
+  if (quiet || !changed) return;
+  showStrategy(lastStrategy && CoachModes.get(coachMode).phases.includes(lastStrategy.phase) ? lastStrategy : { phase: CoachModes.get(coachMode).phases[0], temperature: "neutral", play: "Strategy updates after every line.", they_care_about: "", avoid: "" }, true);
+  showReview(); if (session) save();
+  setStatus(`coach style: ${CoachModes.get(coachMode).name}${review ? ". Press Rewrite for a recap in this style" : ""}`);
+}
+document.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => setCoachMode(b.dataset.mode)));
+modeLabels(); drawPresets();
+const titleEl = $("#title");
+titleEl.oninput = () => { if (session) { session.title = titleEl.value.trim(); save() } };
+// every server call goes through here: a 401 means the login cookie expired, so reload to the passcode page
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { "content-type": "application/json", ...opts.headers, "x-coach-browser": CallHistory.browserKey() } });
+  if (r.status === 401) { location.reload(); throw new Error("signed out") }
+  return r;
+}
+
+
+// ---- models, and how this version reaches them: all on this computer
+// Name the models before anything loads, so the panel never just says "loads on Start".
+const LLM_NAME = { chrome: "Gemini Nano (built into Chrome)", qwen: "Qwen 3.5 2B (4-bit)", auto: "Gemini Nano or Qwen 3.5 2B" };
+Activity.setModel("speech", { title: "Speech", model: "Moonshine base", where: "this computer · loads on Start", note: "Both lanes, live" });
+for (const [role, title, note] of [["strategy", "Strategy", "After every new line"], ["coach", "Coach", "After new lines, or when you press Coach me now"], ["recap", "Recap", "Once, after the call"]])
+  Activity.setModel(role, { title, model: LLM_NAME.auto, where: "this computer · loads on Start", note });
+const AIX = {
+  coach: (b) => AI().coach(b),
+  strategy: (b) => AI().strategy(b),
+  review: (b) => AI().review(b),
+};
+const setTicker = (t, warn) => { $("#thinking").textContent = t; $("#ticker").style.color = warn ? "var(--hot)" : "" };
+Activity.on((ev) => {
+  if (ev.type !== "call") return;
+  const e = ev.e, out = Activity.pending();
+  setTicker(`${e.state === "out" ? "↗" : e.state === "ok" ? "↙" : "✕"} ${e.label} · ${Activity.short(e.model)}${e.state === "out" ? "" : " · " + Activity.secs(e.ms)}${out ? ` · ${out} out` : ""}`, e.state === "err");
+});
+
+const lines = []; // {who, text, t}
+// ---- sessions: every call is saved in this browser (IndexedDB) as it happens, and History reopens it.
+// Nothing about a call is kept on the server unless you share a recap.
+let session = null; // {id, startedAt, title, imported?, reconstructed?, shared?}
+let importing = null; // the session id being coached from an upload; opening or starting something else stops it
+// every update is kept with `at` = number of transcript lines it had seen, so a session can be replayed
+const coachHistory = [], strategyHistory = []; let lastStrategy = null;
+const newId = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-") + "-" + Math.random().toString(36).slice(2, 6);
+function ensureSession() { if (!session) { session = { id: newId(), startedAt: new Date().toISOString(), title: titleEl.value.trim() }; save() } }
+let review = null; // post-call recap
+let reviewTab = "recap"; // "recap" | "scorecard"
+const state = () => structuredClone({ ...session, mode: coachMode, context: ctx.value, lines, coachHistory, strategyHistory, strategy: lastStrategy, review });
+let saveTimer, saveFails = 0;
+function save() { clearTimeout(saveTimer); if (session) saveTimer = setTimeout(saveNow, running ? 3000 : 600) }
+async function saveNow() {
+  clearTimeout(saveTimer);
+  if (!session) return;
+  try {
+    await CallHistory.put(state());
+    if (saveFails) setStatus("saved again", running); saveFails = 0;
+    hist.refresh();
+  } catch (e) { console.warn(e); saveFails++; setStatus("couldn't save this call in the browser; will retry", running, "warn"); setTimeout(save, 5000) }
+}
+addEventListener("pagehide", () => { if (session && lines.length) saveNow() });
+const hist = CallHistory.mount({
+  sidebar: "#sessions", dialog: "#historybox", button: "[data-open-history]",
+  current: () => session?.id, onOpen: (id) => openSession(id),
+  onDelete: (id) => { if (session?.id === id) resetView("deleted. Start a new call or open one from History") },
+});
+const refreshSessions = () => hist.refresh();
+// ---- calls saved on the server before history moved into the browser (Nov 23).
+// A button copies them into this browser once. The server copies stay where they are.
+let older = [];
+async function checkOlder() {
+  try {
+    const r = await api("/api/older-calls"); if (!r.ok) throw new Error("HTTP " + r.status);
+    const all = await r.json(), have = new Set((await CallHistory.list()).map((m) => m.id));
+    older = (Array.isArray(all) ? all : []).filter((x) => x && x.id && !have.has(x.id));
+  } catch (e) { console.warn("older calls", e); older = [] }
+  document.querySelectorAll("[data-older]").forEach((b) => {
+    b.hidden = !older.length; b.disabled = false;
+    b.textContent = `Bring in ${older.length} older call${older.length === 1 ? "" : "s"}`;
+    b.title = "Calls saved on the server before history moved into this browser. This copies them here; the server copies stay.";
+  });
+}
+document.querySelectorAll("[data-older]").forEach((b) => (b.onclick = async () => {
+  const todo = older.slice(), btns = document.querySelectorAll("[data-older]");
+  let n = 0, failed = 0;
+  for (const [i, x] of todo.entries()) {
+    btns.forEach((el) => { el.disabled = true; el.textContent = `Bringing in ${i + 1} of ${todo.length}…` });
+    try {
+      const r = await api(`/api/older-calls/${encodeURIComponent(x.id)}`), s = await r.json();
+      if (!r.ok || !Array.isArray(s?.lines)) throw new Error(s?.error || "HTTP " + r.status);
+      await CallHistory.put({ ...s, id: x.id, mode: CoachModes.ok(s.mode), shared: Array.isArray(s.shared) ? s.shared : [] }); n++;
+    } catch (e) { console.warn("older call", x.id, e); failed++ }
+  }
+  await hist.refresh(); await checkOlder();
+  setStatus(`brought in ${n} older call${n === 1 ? "" : "s"}${failed ? `; ${failed} couldn't be read` : ""}. They're in History`, false, failed ? "warn" : undefined);
+}));
+checkOlder();
+async function openSession(id) {
+  if (running) return setStatus("Stop listening before opening another call", true, "warn");
+  if (session?.id === id && lines.length) return;
+  importing = null;
+  try {
+    if (session && lines.length) await saveNow();
+    const s = await CallHistory.get(id);
+    if (!s) throw new Error("it isn't saved in this browser");
+    session = { id: s.id, startedAt: s.startedAt, title: s.title || "", imported: !!s.imported, reconstructed: !!s.reconstructed, shared: s.shared || [] };
+    titleEl.value = session.title;
+    if (typeof s.context === "string" && s.context !== ctx.value) { ctx.value = s.context; ctx.oninput() } // each call keeps the context it ran with
+    review = s.review || null;
+    lines.length = 0; lines.push(...(s.lines || []));
+    words.me = words.them = 0; for (const l of lines) words[l.who] += l.text.split(/\s+/).length;
+    partial.me = partial.them = "";
+    coachHistory.length = 0; coachHistory.push(...(s.coachHistory || []));
+    strategyHistory.length = 0; strategyHistory.push(...(s.strategyHistory || (s.strategy ? [{ at: lines.length, strategy: s.strategy }] : [])));
+    lastStrategy = s.strategy || strategyHistory[strategyHistory.length - 1]?.strategy || null;
+    setCoachMode(s.mode, true); // each call keeps the coach style it ran with
+    showMoment(lines.length);
+    if (s.reconstructed) $("#stratAt").textContent = "strategy and coach reconstructed after the call";
+    history.replaceState(null, "", "#s=" + id);
+    render(); hist.paint(); showReview();
+    setStatus(`opened: ${lines.length} lines. Start listening to continue it, or press Coach me now to review`);
+  } catch (e) { setStatus("couldn't open that call: " + e.message, false, "warn") }
+}
+function setMode() {
+  $("#mode").textContent = running ? "On air" : importing ? "Coaching an uploaded call" : lines.length ? (session?.imported ? "Uploaded call" : "Review") : "Ready";
+}
+const partial = { me: "", them: "" }; // live in-progress text per speaker
+const words = { me: 0, them: 0 };
+function addLine(who, text) {
+  text = text.trim();
+  if (!text) return;
+  ensureSession();
+  const last = lines[lines.length - 1];
+  if (last && last.who === who) last.text += " " + text; // merge consecutive chunks by same speaker
+  else lines.push({ who, text, t: new Date().toISOString() });
+  words[who] += text.split(/\s+/).length;
+  render(); scheduleCoach(); runStrategy(); save();
+}
+// per-line phase from strategy history; majority over ±4 lines smooths the flicker into the call's arc
+function phaseInfo() {
+  const N = lines.length, st = new Array(N), SH = [...strategyHistory].sort((a, b) => a.at - b.at);
+  let k = 0, cur = null;
+  for (let i = 0; i < N; i++) { while (k < SH.length && SH[k].at <= i + 1) cur = SH[k++].strategy; st[i] = cur }
+  const raw = st.map((x) => x?.phase || null);
+  const phase = raw.map((_, i) => {
+    const c = {}; for (let j = Math.max(0, i - 4); j <= Math.min(N - 1, i + 4); j++) if (raw[j]) c[raw[j]] = (c[raw[j]] || 0) + 1 + (j === i ? 0.5 : 0);
+    return Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  });
+  const segs = []; phase.forEach((p, i) => (segs.at(-1)?.p === p ? segs.at(-1).n++ : segs.push({ p, start: i, n: 1 })));
+  return { st, phase, segs };
+}
+function jumpTo(i) { // review mode: show the panel as of line i and scroll it into view
+  if (running) return;
+  showMoment(i + 1); render();
+  document.querySelector(`#transcript [data-i="${i}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+let PI = { st: [], phase: [], segs: [] };
+function render() {
+  const el = $("#transcript");
+  PI = phaseInfo();
+  const sel = moment != null ? moment - 1 : -1;
+  const hasTl = PI.segs.some((s) => s.p);
+  $("#tl").hidden = !hasTl;
+  if (hasTl) {
+    $("#tlbar").innerHTML = PI.segs.map((s, j) => `<button data-j="${j}" style="flex:${s.n};background:${s.p ? `var(--p-${s.p})` : "var(--line)"}" class="${sel >= s.start && sel < s.start + s.n ? "on" : ""}" title="${s.p || "no read yet"} · lines ${s.start + 1}–${s.start + s.n}"></button>`).join("");
+    $("#tltemp").innerHTML = PI.st.map((x) => `<span style="background:var(--t-${x?.temperature || "neutral"})"></span>`).join("");
+  }
+  document.body.classList.toggle("reviewing", !running && hasTl);
+  const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  el.innerHTML = "";
+  // review mode (not live): color lines by phase, click to scrub; a margin note marks phase/temperature shifts (or every 10 lines)
+  const review = !running && hasTl;
+  let lastKey = "", lastAt = -99;
+  lines.forEach((l, i) => {
+    const p = document.createElement("p"); p.className = "ln " + l.who; p.dataset.i = i;
+    if (review) { p.classList.add("review"); if (i === sel) p.classList.add("sel"); p.style.setProperty("--pc", PI.phase[i] ? `var(--p-${PI.phase[i]})` : "transparent"); p.onclick = () => jumpTo(i) }
+    const b = document.createElement("b"); b.textContent = l.who.toUpperCase();
+    p.append(b, l.text); el.append(p);
+    const st = PI.st[i], key = PI.phase[i] + "|" + (st?.temperature || "");
+    if (review && st && strategyHistory.some((h) => h.at <= i + 1) && (key !== lastKey || i - lastAt >= 10)) {
+      lastKey = key; lastAt = i;
+      const n = document.createElement("button"); n.className = "note" + (i === sel ? " on" : "");
+      n.innerHTML = `<span class="phase on">${PI.phase[i]}</span><span class="temp ${st.temperature}">${st.temperature}</span>`;
+      n.append(st.play);
+      n.onclick = () => jumpTo(i);
+      el.append(n);
+    }
+  });
+  for (const who of ["them", "me"]) if (partial[who]) {
+    const p = document.createElement("p"); p.className = "ln partial " + who;
+    const b = document.createElement("b"); b.textContent = who.toUpperCase();
+    p.append(b, partial[who]); el.append(p);
+  }
+  if (!lines.length && !running && !partial.me && !partial.them) {
+    el.innerHTML = `<div class="start-empty"><p>No transcript yet. Start listening to coach a live call, or upload a transcript to coach one that already happened.</p>
+      <div data-recent hidden><div class="hday">Recent calls in this browser</div><div class="recent"></div></div></div>`;
+    hist.paint();
+  }
+  $("#txsub").textContent = lines.length ? `${lines.length} line${lines.length === 1 ? "" : "s"}` : "";
+  setMode();
+  if (atBottom && (running || moment == null)) el.scrollTop = el.scrollHeight;
+  const tot = words.me + words.them;
+  $("#share").disabled = running || !lines.length;
+  $("#ratio").textContent = tot ? `talk: you ${Math.round(100 * words.me / tot)}% / them ${Math.round(100 * words.them / tot)}%` : "";
+}
+const transcriptText = () => lines.map((l) => `${l.who.toUpperCase()}: ${l.text}`).join("\n");
+
+// ---- coach loop: one request in flight, rerun if new text arrived meanwhile
+let inflight = false, dirty = false, timer, coachFails = 0;
+function scheduleCoach() { clearTimeout(timer); timer = setTimeout(runCoach, 1200) }
+async function runCoach() {
+  if (inflight) { dirty = true; return }
+  inflight = true; dirty = false;
+  try {
+    const c = await Activity.track({ role: "coach", label: "Coach", target: "#coachsec", detail: `${lines.length} lines` },
+      () => AIX.coach({ context: ctx.value, mode: coachMode, transcript: transcriptText() }));
+    showCoach(c); coachFails = 0;
+  } catch (e) {
+    console.error(e);
+    coachFails++;
+    const why = e instanceof TypeError ? "can't reach the server" : e.message;
+    const wait = Math.min(15, 2 ** coachFails); // last advice stays on screen meanwhile
+    setTicker(`coach hiccup: ${why}, retrying in ${wait}s`, true);
+    if (running || coachFails < 3) setTimeout(() => { dirty = true; if (!inflight) runCoach() }, wait * 1000);
+  }
+  inflight = false;
+  if (dirty) runCoach();
+}
+function showStrategy(st, restoring) {
+  const PHASES = CoachModes.get(coachMode).phases;
+  if (!restoring) { lastStrategy = st; strategyHistory.push({ t: new Date().toISOString(), at: lines.length, strategy: st }); save() }
+  const present = new Set(PI.segs.map((s) => s.p));
+  $("#phases").innerHTML = PHASES.map((p) => `<span class="phase${p === st.phase ? " on" : ""}${present.size && !present.has(p) ? " none" : ""}" data-p="${p}">${p}</span>`).join("")
+    + `<span class="temp ${st.temperature}">${st.temperature}</span>`;
+  const play = $("#play"); play.textContent = st.play; play.classList.add("fresh2"); setTimeout(() => play.classList.remove("fresh2"), 600);
+  $("#care").textContent = st.they_care_about || "–";
+  $("#avoid").textContent = st.avoid || "–";
+  $("#stratAt").textContent = "strategy " + new Date().toLocaleTimeString();
+}
+// fast lane: no debounce, one in flight, re-run once if lines arrived meanwhile; failures are quiet (coach still covers)
+let sInflight = false, sDirty = false;
+async function runStrategy() {
+  if (sInflight) { sDirty = true; return }
+  sInflight = true; sDirty = false;
+  try {
+    const st = await Activity.track({ role: "strategy", label: "Strategy", target: ".strat", detail: `${lines.length} lines` },
+      () => AIX.strategy({ context: ctx.value, mode: coachMode, transcript: transcriptText() }));
+    showStrategy(st);
+  } catch (e) { console.warn("strategy", e); $("#stratAt").textContent = "strategy paused, will retry on next line" }
+  sInflight = false;
+  if (sDirty) runStrategy();
+}
+showStrategy({ phase: CoachModes.get(coachMode).phases[0], temperature: "neutral", play: "Strategy updates after every line.", they_care_about: "", avoid: "" }, true);
+$("#stratAt").textContent = "";
+let moment = null;
+$("#tlbar").onclick = (e) => { const b = e.target.closest("button"); if (b) jumpTo(PI.segs[+b.dataset.j].start) };
+$("#phases").onclick = (e) => {
+  const c = e.target.closest(".phase"); if (!c || running) return;
+  const mine = PI.segs.filter((s) => s.p === c.dataset.p); if (!mine.length) return;
+  const cur = moment != null ? moment - 1 : -1;
+  jumpTo((mine.find((s) => s.start > cur) || mine[0]).start);
+};
+function showMoment(at) {
+  moment = at;
+  const st = [...strategyHistory].reverse().find((h) => h.at <= at);
+  const co = [...coachHistory].reverse().find((h) => (h.at ?? Infinity) <= at) || (at >= lines.length && coachHistory[coachHistory.length - 1]);
+  if (st) showStrategy(st.strategy, true);
+  if (co) showCoach(co.coach, true);
+  $("#stratAt").textContent = at < lines.length ? `as of line ${at} of ${lines.length}` : "";
+}
+function li(parent, text) { const l = document.createElement("li"); l.textContent = text; parent.append(l) }
+function showCoach(c, restoring) {
+  if (!restoring && session) { coachHistory.push({ t: new Date().toISOString(), at: lines.length, coach: c }); save() }
+  $("#now").textContent = c.now || $("#now").textContent;
+  $("#watch").textContent = c.watch || "";
+  const asks = $("#asks"); asks.innerHTML = "";
+  for (const a of c.ask || []) {
+    const d = document.createElement("div"); d.className = "q";
+    const t = document.createElement("div"); t.className = "t"; t.textContent = a.q;
+    const w = document.createElement("div"); w.className = "w"; w.textContent = a.why;
+    d.append(t, w); asks.append(d);
+  }
+  $("#loose").innerHTML = ""; (c.loose_ends || []).forEach((x) => li($("#loose"), x));
+  $("#covered").innerHTML = ""; (c.covered || []).forEach((x) => li($("#covered"), x));
+  const u = $("#updated"); u.classList.remove("fresh"); void u.offsetWidth; u.classList.add("fresh");
+}
+
+// ---- audio: 16 kHz per speaker. A simple voice detector cuts each lane into utterances,
+// and Moonshine transcribes them in a worker on this computer. No audio leaves the browser.
+let streams = [], lanes = [], running = false, actx;
+const AI = () => { if (!window.LocalAI) throw new Error("on-device AI is still loading"); return window.LocalAI };
+const FRAME_MS = 1000 * 128 / 16000, MAX_SEC = 14;
+function stream(media, who) {
+  const node = new AudioWorkletNode(actx, "pcm");
+  // tap: the mic or tab feeding this lane. swap() plugs a new mic into the same lane mid-call.
+  const tap = { media, src: actx.createMediaStreamSource(media), frameAt: performance.now(), soundAt: performance.now() };
+  tap.src.connect(node);
+  tap.swap = (m) => {
+    try { tap.src.disconnect() } catch {}
+    tap.media.getTracks().forEach((t) => t.stop());
+    tap.media = m; tap.src = actx.createMediaStreamSource(m); tap.src.connect(node);
+    tap.frameAt = performance.now(); // soundAt moves only when the new mic is heard
+  };
+  const meter = document.getElementById("lv-" + who);
+  let lvl = 0, floor = 0.004, hot = 0, speaking = false, pre = [], chunks = [], len = 0, quiet = 0, voiced = 0;
+  const flush = (more) => {
+    const audio = new Float32Array(len); let o = 0; for (const c of chunks) { audio.set(c, o); o += c.length }
+    const talk = voiced * FRAME_MS; chunks = []; len = 0; quiet = 0; voiced = 0; speaking = more;
+    if (!more) { partial[who] = ""; render() }
+    if (talk < 300) return; // under 0.3 s of actual voice: a cough or a click
+    const endedAt = performance.now();
+    Activity.track({ role: "speech", label: `Transcribe ${who === "me" ? "you" : "them"}`, target: "#tx-hd", detail: `${(audio.length / 16000).toFixed(1)} s of audio` },
+      () => AI().transcribe(audio, endedAt)).catch(() => "").then((text) => {
+      text = text.replace(/\s+/g, " ").trim();
+      if (/[A-Za-z]{2,}/.test(text)) addLine(who, text);
+    });
+  };
+  node.port.onmessage = ({ data }) => {
+    tap.frameAt = performance.now(); if (data.rms > 1e-7) tap.soundAt = tap.frameAt;
+    const { pcm, rms } = data;
+    lvl = Math.max(rms * 400, lvl * 0.9); meter.style.backgroundSize = Math.min(100, lvl) + "% 100%"; window.Studio && Studio.level(who, data.rms);
+    if (!running) return;
+    const loud = rms > Math.max(who === "me" ? 0.012 : 0.008, floor * 3);
+    if (!speaking) {
+      floor = floor * 0.995 + Math.min(rms, 0.05) * 0.005; // track background noise while nobody talks
+      pre.push(pcm); if (pre.length > 40) pre.shift(); // keep ~300 ms before speech starts
+      hot = loud ? hot + 1 : 0;
+      if (hot >= 3) { speaking = true; chunks = pre; len = pre.reduce((n, c) => n + c.length, 0); pre = []; quiet = 0; voiced = 3; partial[who] = "…"; render() }
+      return;
+    }
+    chunks.push(pcm); len += pcm.length; if (loud) voiced++;
+    quiet = loud ? 0 : quiet + FRAME_MS;
+    if (quiet >= 700) flush(false); // a pause ends the utterance
+    else if (len >= 16000 * MAX_SEC) flush(true); // long monologue: transcribe in pieces
+  };
+  lanes.push({ who, end: () => speaking && flush(false) });
+  if (who === "me") guardMic(tap);
+  else media.getAudioTracks()[0].onended = () => running && setStatus("meeting audio stopped sharing. Stop → Start to re-share", true, "warn");
+  return tap;
+}
+
+// Keep your mic feeding the transcript for the whole call. Sharing a tab, joining the meeting or a
+// Bluetooth headset switching modes can end, mute or silence the mic. When that happens, open the
+// mic again and plug it into the same lane, so the call keeps going without Stop and Start.
+const MIC_OPTS = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+function getMic() {
+  const id = $("#mic").value, any = () => navigator.mediaDevices.getUserMedia({ audio: MIC_OPTS });
+  if (!id) return any();
+  return navigator.mediaDevices.getUserMedia({ audio: { ...MIC_OPTS, deviceId: { exact: id } } })
+    .catch((e) => /Overconstrained|NotFound|NotReadable/.test(e.name) ? any() : Promise.reject(e)); // saved mic gone or busy → default
+}
+let micTimer;
+function guardMic(tap) {
+  let busy = false, lastTry = 0, quietTries = 0, warned = false, muteTimer;
+  const hook = (track) => {
+    track.onended = () => reopen("it disconnected");
+    track.onmute = () => { clearTimeout(muteTimer); muteTimer = setTimeout(() => track.muted && reopen("it was muted"), 1500) };
+    track.onunmute = () => clearTimeout(muteTimer);
+  };
+  const reopen = async (why) => {
+    if (!running || busy) return;
+    busy = true; lastTry = performance.now();
+    try {
+      const m = await getMic();
+      if (!running) return m.getTracks().forEach((t) => t.stop());
+      streams = streams.filter((s) => s !== tap.media).concat(m);
+      tap.swap(m); hook(m.getAudioTracks()[0]); listMics();
+      setStatus(`microphone reconnected (${why})`, true);
+    } catch (e) {
+      setStatus(`lost your microphone (${why}). ${FRIENDLY[e.name] || "Stop → Start"}`, true, "warn");
+    } finally { busy = false }
+  };
+  hook(tap.media.getAudioTracks()[0]);
+  $("#mic").onchange = () => running && reopen("you picked another mic");
+  clearInterval(micTimer);
+  micTimer = setInterval(() => {
+    if (!running) return clearInterval(micTimer);
+    if (actx.state === "suspended" || actx.state === "interrupted") actx.resume().catch(() => {});
+    if (actx.state !== "running") return; // nothing flows while the audio clock is paused
+    const now = performance.now(), dead = now - tap.frameAt > 2500, silent = now - tap.soundAt > 4000;
+    if (!dead && !silent) { quietTries = 0; warned = false; return }
+    if (busy || now - lastTry < 10000) return;
+    if (!dead && quietTries >= 2) { // reopening didn't help: likely muted on the headset or computer
+      if (!warned) setStatus("your mic is sending silence. Check it isn't muted on your headset or computer", true, "warn");
+      warned = true; return;
+    }
+    if (!dead) quietTries++;
+    reopen(dead ? "it stopped sending audio" : "it went silent");
+  }, 1000);
+}
+async function listMics() {
+  const sel = $("#mic"), cur = sel.value;
+  const devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audioinput");
+  sel.innerHTML = devs.map((d) => `<option value="${d.deviceId}">${(d.label || "mic").replace(/</g, "")}</option>`).join("");
+  if (cur) sel.value = cur;
+}
+listMics();
+function setStatus(t, live, level) {
+  const el = $("#status"); el.textContent = t; el.prepend(Object.assign(document.createElement("span"), { className: "dot" }));
+  el.className = [live && "live", level].filter(Boolean).join(" ");
+}
+const FRIENDLY = {
+  NotAllowedError: "microphone blocked. Allow it from the address bar icon, then Start again",
+  NotFoundError: "no microphone found. Plug one in and Start again",
+  NotReadableError: "microphone is busy in another app. Close it or pick another mic",
+};
+
+$("#start").onclick = async () => {
+  try {
+    const mic = await getMic();
+    listMics();
+    let tab = null;
+    try {
+      tab = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: "browser" }, audio: true, systemAudio: "include",
+        selfBrowserSurface: "exclude", surfaceSwitching: "include", preferCurrentTab: false,
+      });
+    } catch { /* mic-only mode */ }
+    const tabAudio = tab && tab.getAudioTracks().length ? new MediaStream(tab.getAudioTracks()) : null;
+    streams = [mic, tab].filter(Boolean);
+    actx = new AudioContext({ sampleRate: 16000 });
+    await actx.audioWorklet.addModule("/pcm-worklet.js");
+    // the share picker takes focus away; make sure the audio clock is running, and restart it if the browser pauses it
+    actx.resume().catch(() => {});
+    actx.onstatechange = () => running && (actx.state === "suspended" || actx.state === "interrupted") && actx.resume().catch(() => {});
+    lanes = [];
+    AI().startSTT().catch((e) => setStatus("speech model didn't load: " + e.message, true, "warn"));
+    AI().startLLM().catch((e) => setStatus("coach model didn't load: " + e.message, true, "warn"));
+    running = true; moment = null; importing = null; Activity.live = true; window.Studio?.lanes({ me: true, them: !!tabAudio }); render();
+    stream(mic, "me");
+    if (tabAudio) stream(tabAudio, "them");
+    setStatus(tabAudio ? "listening: you + meeting" : "listening: mic only. To hear the other side, Stop, Start again, pick the Meet or Claude tab and turn on Share tab audio", true, tabAudio ? undefined : "warn");
+    $("#start").disabled = true; $("#stop").disabled = false; $("#ctxbox").open = false;
+    runCoach();
+  } catch (e) {
+    console.error(e);
+    streams.forEach((s) => s.getTracks().forEach((t) => t.stop())); streams = [];
+    setStatus(FRIENDLY[e.name] || "couldn't start: " + e.message, false, "warn");
+  }
+};
+$("#stop").onclick = () => {
+  lanes.forEach((l) => l.end()); // transcribe whatever was mid-sentence
+  running = false; clearInterval(micTimer);
+  streams.forEach((s) => s.getTracks().forEach((t) => t.stop()));
+  lanes = [];
+  actx && actx.close();
+  Activity.live = false; window.Studio?.lanes({ me: false, them: false });
+  setStatus("stopped"); $("#start").disabled = false; $("#stop").disabled = true;
+  clearTimeout(saveTimer); if (session) saveNow();
+  render(); // switch to review mode
+  if (lines.length) setTimeout(runReview, 1500); // let the last utterances land first
+};
+
+// ---- post-call recap: one pass over the whole call
+let reviewing = null; // the Activity call while the recap is being written
+async function runReview() {
+  if (reviewing || !lines.length) return review;
+  const tick = setInterval(showReview, 500);
+  try {
+    review = await Activity.track({ role: "recap", label: "Recap", target: "#after", detail: `${lines.length} lines` },
+      (e) => { reviewing = e; showReview(); return AIX.review({ context: ctx.value, mode: coachMode, lines }) });
+    save();
+  } catch (e) { setStatus("couldn't write the recap: " + e.message, false, "warn") }
+  clearInterval(tick); reviewing = null; showReview();
+  return review;
+}
+function showReview() {
+  const box = $("#after");
+  box.hidden = running || (!review && !reviewing && !lines.length);
+  if (box.hidden) return;
+  const esc = (x) => String(x ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  if (reviewing) {
+    box.innerHTML = `<div class="hdr"><span class="sec" style="margin:0">After the call</span><span class="sub" style="color:var(--dim);font-size:var(--fs-sm)">${esc(Activity.short(reviewing.model))} · ${Activity.secs(performance.now() - reviewing.t0)}</span></div>
+      <div class="working"><div><b>Writing the recap.</b> One pass over all ${lines.length} lines: ${CoachModes.get(coachMode).recapParts}.</div><div class="meter ind"><i></i></div></div>`;
+    return;
+  }
+  if (!review) { box.innerHTML = '<div class="hdr"><span class="sec" style="margin:0">After the call</span><button class="mini" id="dorev">Write recap</button></div><p style="color:var(--dim)">No recap for this call yet.</p>'; $("#dorev").onclick = runReview; return }
+  const v = review, L = CoachModes.get(coachMode);
+  const tabs = `<span class="sc-tabs" role="tablist">${[["recap", "Recap"], ["scorecard", "Scorecard"]].map(([k, t]) => `<button role="tab" data-tab="${k}" aria-selected="${reviewTab === k}">${t}</button>`).join("")}</span>`;
+  const head = `<div class="hdr">${tabs}<button class="mini" id="dorev">Rewrite</button></div>`;
+  const wire = () => {
+    $("#dorev").onclick = runReview;
+    box.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { reviewTab = b.dataset.tab; showReview() }));
+    box.querySelectorAll(".miss, .sc-jump").forEach((b) => (b.onclick = () => jumpTo(Math.min(lines.length, +b.dataset.line) - 1)));
+  };
+  if (reviewTab === "scorecard" && window.Scorecard) { box.innerHTML = head + Scorecard.html(v, lines, coachMode); wire(); return }
+  box.innerHTML = `${head}
+    ${v.partial ? `<p style="color:var(--dim);font-size:var(--fs-sm)">${esc(v.partial)}</p>` : ""}<p>${esc(v.summary)}</p>
+    ${v.went_well?.length ? `<h3>Went well</h3><ul>${v.went_well.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+    ${v.misses?.length ? `<h3>${L.misses}</h3>${v.misses.map((x) => `<button class="miss" data-line="${+x.line}"><small>line ${+x.line}</small>${esc(x.what)}<div class="better">Try: ${esc(x.better)}</div></button>`).join("")}` : ""}
+    <h3>Next step</h3><p>${esc(v.next_step)}</p>
+    ${v.follow_up_email ? `<h3>${L.email}</h3><pre>Subject: ${esc(v.follow_up_email.subject)}\n\n${esc(v.follow_up_email.body)}</pre>` : ""}
+    ${v.crm_notes?.length ? `<h3>${L.notes}</h3><ul>${v.crm_notes.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}`;
+  wire();
+}
+
+// ---- share: a recap at /r/<id>, opened with a one-time code
+$("#share").onclick = async () => {
+  if (running || !session || !lines.length) return;
+  const btn = $("#share"); btn.disabled = true;
+  try {
+    if (!review) { setStatus("writing the recap first…"); await runReview() }
+    const r = await api("/api/recaps", { method: "POST", body: JSON.stringify({ session: state() }) });
+    const x = await r.json(); if (x.error) throw new Error(x.error);
+    session.shared = [...(session.shared || []), x.id]; await saveNow();
+    $("#shareurl").value = x.url; $("#sharecode").value = x.code;
+    $("#shareexp").textContent = `The link stops working on ${new Date(x.expiresAt).toLocaleDateString([], { month: "short", day: "numeric" })}. Revoke it any time from the sidebar.`;
+    $("#sharebox").showModal();
+    setStatus("recap shared. Link and code are in the dialog");
+    refreshRecaps();
+  } catch (e) { setStatus("couldn't share: " + e.message, false, "warn") }
+  btn.disabled = running || !lines.length;
+};
+$("#sharebox").onclick = (e) => {
+  const b = e.target.closest("[data-copy]"); if (!b) return;
+  e.preventDefault();
+  navigator.clipboard.writeText($("#" + b.dataset.copy).value).then(() => (b.textContent = "Copied"), () => $("#" + b.dataset.copy).select());
+};
+async function refreshRecaps() {
+  try {
+    const list = await (await api("/api/recaps")).json();
+    const el = $("#recaps"); el.innerHTML = "";
+    for (const x of list) {
+      const row = document.createElement("div"); row.className = "rc";
+      const a = document.createElement("a"); a.href = x.url; a.target = "_blank"; a.rel = "noopener";
+      a.textContent = x.title || new Date(x.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+      const del = document.createElement("button"); del.className = "mini"; del.textContent = "Revoke";
+      del.onclick = async () => {
+        if (!confirm(`Revoke "${a.textContent}"? The link stops working for everyone.`)) return;
+        await api(`/api/recaps/${x.id}`, { method: "DELETE" }); refreshRecaps();
+      };
+      a.title = "Expires " + new Date(x.expiresAt).toLocaleDateString([], { month: "short", day: "numeric" });
+      row.append(a, del); el.append(row);
+    }
+    if (!list.length) el.innerHTML = '<div class="empty">None from this browser</div>';
+  } catch { /* convenience list; ignore */ }
+}
+refreshRecaps();
+function resetView(msg) {
+  importing = null; session = null; coachHistory.length = 0; strategyHistory.length = 0; lastStrategy = null;
+  lines.length = 0; words.me = words.them = 0; partial.me = partial.them = ""; review = null; titleEl.value = "";
+  history.replaceState(null, "", location.pathname + location.search);
+  render(); hist.paint(); showReview();
+  setStatus(msg, running);
+}
+$("#clear").onclick = async () => { // the old session stays saved; this starts a fresh one
+  if (session && lines.length) await saveNow();
+  resetView("new session. The last one is in History");
+};
+const hashId = location.hash.match(/^#s=([\w-]+)$/)?.[1]; if (hashId) openSession(hashId); else render();
+$("#ask").onclick = runCoach;
+// ---- on-device AI panel: what's loaded, how big, how fast
+const renderAI = (s) => {
+  $("#aistats").innerHTML = window.LocalAI.statsHTML(s);
+  const mb = (n) => !n ? "" : n >= 1e9 ? (n / 1e9).toFixed(1) + " GB" : Math.round(n / 1e6) + " MB";
+  const pct = (p) => ` ${Math.round(100 * (p || 0))}%`;
+  const picked = LLM_NAME[$("#engine")?.value] || LLM_NAME.auto;
+  const llm = s.llm.state === "ready" ? s.llm.label : s.llm.state === "loading" ? s.llm.label : s.llm.state === "error" ? `${picked} (didn't load)` : picked;
+  const llmWhere = s.llm.device === "WebGPU" ? "this computer's GPU" : s.llm.device ? "inside Chrome, this computer" : "this computer";
+  const llmState = s.llm.state === "loading" ? "loading" + pct(s.llm.progress) : s.llm.state === "ready" ? "" : s.llm.state === "error" ? "" : "loads on Start";
+  Activity.setModel("speech", { model: s.stt.label || "Moonshine base",
+    where: [s.stt.device ? `this computer's ${s.stt.device === "webgpu" ? "GPU" : "CPU"}` : "this computer", s.stt.state === "loading" ? "loading" : s.stt.state === "ready" ? "" : "loads on Start"].filter(Boolean).join(" · "),
+    size: s.stt.total ? mb(s.stt.total) + " download" : "" });
+  for (const role of ["strategy", "coach", "recap"]) Activity.setModel(role, { model: llm, where: [llmWhere, llmState].filter(Boolean).join(" · "), size: s.llm.gpuMB ? mb(s.llm.gpuMB * 1e6) + " GPU memory" : "" });
+};
+function hookAI() {
+  const L = window.LocalAI; if (!L) return;
+  $("#engine").value = L.engine;
+  L.onStats = renderAI;
+  $("#engine").onchange = async () => { if (running) { $("#engine").value = L.engine; return setStatus("Stop listening before switching models", true, "warn") } await L.switchEngine($("#engine").value); if (L.stats.stt.state === "ready") L.startLLM().catch(() => {}) };
+  $("#prep").onclick = () => { L.startSTT().catch(() => {}); L.startLLM().catch(() => {}) };
+  if (!window.isSecureContext || !("gpu" in navigator) && !("LanguageModel" in window)) setStatus("this browser can't run the coach model. Use Chrome or Edge", false, "warn");
+}
+window.LocalAI ? hookAI() : addEventListener("localai", hookAI, { once: true });
+$("#copy").onclick = () => navigator.clipboard.writeText(transcriptText())
+  .then(() => setStatus("transcript copied", running), () => setStatus("couldn't copy. Select the transcript text instead", running, "warn"));
+$("#inject").onsubmit = (e) => {
+  e.preventDefault();
+  const v = e.target.querySelector("input").value; e.target.reset();
+  const m = v.match(/^\s*(me|them)\s*:\s*(.*)$/i);
+  addLine(m ? m[1].toLowerCase() : "them", m ? m[2] : v);
+};
+
+// ---- coach a past call: upload or paste a transcript, then the recap, Scorecard and a walk-through.
+// It's a longer job, so it gets the progress panel: every step, which one it's on, and how long each took.
+const askAt = (kind, transcript, label) => Activity.track({ role: kind, label, quiet: true }, () => AIX[kind]({ context: ctx.value, mode: coachMode, transcript }));
+const checkpoints = (n, k) => [...new Set(Array.from({ length: Math.min(k, n) }, (_, i) => Math.max(1, Math.round((n * (i + 1)) / Math.min(k, n)))))];
+const modelOf = (role) => Activity.short(Activity.models.get(role)?.model || role);
+async function walkThrough(id, job) {
+  const n = lines.length, sAt = checkpoints(n, 16), cAt = new Set(checkpoints(n, 6));
+  const plan = sAt.map((a) => ({ a, coach: cAt.has(a) || a === n }));
+  const total = plan.reduce((s, p) => s + 1 + (p.coach ? 1 : 0), 0);
+  let done = 0, failed = 0;
+  job.start("walk", `${sAt.length} strategy reads (${modelOf("strategy")}) and ${plan.filter((p) => p.coach).length} coach reads (${modelOf("coach")})`);
+  for (const p of plan) {
+    if (importing !== id || running) return false;
+    const tx = lines.slice(0, p.a).map((l) => `${l.who.toUpperCase()}: ${l.text}`).join("\n");
+    const next = done + 1 + (p.coach ? 1 : 0);
+    try {
+      job.progress("walk", done, total, `At line ${p.a} of ${n}: reading the play with ${modelOf("strategy")}`);
+      const st = await askAt("strategy", tx, `Strategy at line ${p.a}`); done++;
+      if (importing !== id) return false;
+      strategyHistory.push({ t: new Date().toISOString(), at: p.a, strategy: st }); lastStrategy = st;
+      if (p.coach) {
+        job.progress("walk", done, total, `At line ${p.a} of ${n}: coaching with ${modelOf("coach")}`);
+        const co = await askAt("coach", tx, `Coach at line ${p.a}`); done++;
+        if (importing !== id) return false;
+        coachHistory.push({ t: new Date().toISOString(), at: p.a, coach: co });
+      }
+      render(); showMoment(p.a); save();
+    } catch (e) { console.warn("walk-through", e); failed++ }
+    done = next;
+    job.progress("walk", done, total);
+  }
+  session.reconstructed = true;
+  job.done("walk", `${total - failed} of ${total} reads done${failed ? `; ${failed} failed and were skipped` : ""}`);
+  return true;
+}
+async function importCall({ title, lines: L, walk }) {
+  if (running) return setStatus("Stop listening before uploading a transcript", true, "warn");
+  if (session && lines.length) await saveNow();
+  session = { id: newId(), startedAt: new Date().toISOString(), title, imported: true };
+  const id = (importing = session.id);
+  titleEl.value = title; review = null; reviewTab = "recap";
+  coachHistory.length = 0; strategyHistory.length = 0; lastStrategy = null;
+  lines.length = 0; lines.push(...L);
+  words.me = words.them = 0; for (const l of lines) words[l.who] += l.text.split(/\s+/).length;
+  partial.me = partial.them = "";
+  const job = Activity.job({
+    title: `Coaching “${title}”`,
+    sub: `Runs in this tab, so keep it open until it's done. You can hide this and keep working.`,
+    steps: [
+      { key: "read", label: "Read the transcript" },
+      { key: "save", label: "Save it in this browser" },
+      { key: "recap", label: "Write the recap and scorecard" },
+      ...(walk ? [{ key: "walk", label: "Walk through the call with the coach" }] : []),
+    ],
+    onStop: () => { importing = null; setMode(); save() }, stopLabel: "Stop",
+  });
+  const tot = words.me + words.them;
+  job.done("read", `${lines.length} lines · you ${tot ? Math.round((100 * words.me) / tot) : 0}% of the words`);
+  showStrategy({ phase: CoachModes.get(coachMode).phases[0], temperature: "neutral", play: walk ? "Walk-through starts after the recap." : "Strategy wasn't reconstructed for this call.", they_care_about: "", avoid: "" }, true);
+  $("#now").textContent = walk ? "Uploaded call. The recap comes first, then the coach walks through it." : "Uploaded call. The recap is above.";
+  $("#asks").innerHTML = ""; $("#loose").innerHTML = ""; $("#covered").innerHTML = ""; $("#watch").textContent = "";
+  $("#ctxbox").open = false; $("#share").disabled = false;
+  job.start("save"); render(); showReview();
+  await saveNow(); history.replaceState(null, "", "#s=" + id);
+  job.done("save", "Only this browser can see it");
+  job.start("recap", `${modelOf("recap")} reads all ${lines.length} lines once`);
+  setStatus(`uploaded ${lines.length} lines. Writing the recap…`);
+  await runReview();
+  if (importing !== id) return;
+  if (review) job.done("recap", `${review.goals?.length ? `${review.goals.filter((g) => g.status === "hit").length} of ${review.goals.length} goals hit · ` : ""}${review.misses?.length || 0} misses flagged`);
+  else job.fail("recap", "It failed. Retry with Write recap in the right panel.");
+  if (walk) await walkThrough(id, job);
+  if (importing !== id) return;
+  importing = null; save();
+  showMoment(lines.length); render();
+  if (session.reconstructed) $("#stratAt").textContent = "strategy and coach reconstructed after the call";
+  job.finish(review ? "Recap and scorecard are ready. Click any line to see the coach at that point." : "Finished, but the recap failed. Retry it from the right panel.", { cta: review ? "See the recap" : "Close", err: !review });
+  setStatus(review ? "recap ready. Click any line to see the coach at that point" : "uploaded. Write recap is in the right panel", false, review ? undefined : "warn");
+}
+window.TranscriptImport && TranscriptImport.mount({ button: "#import", start: importCall, busy: () => { if (running) setStatus("Stop listening before uploading a transcript", true, "warn"); return running }, note: "The recap and coaching use the call context on the left, and run on this computer like a live call." });
+const stopImport = () => { importing = null };
+$("#start").addEventListener("click", stopImport, true); $("#clear").addEventListener("click", stopImport, true);
+
+// ---- dictate the call context with the mic
+// speech to text for dictation: the same Moonshine model as a live call, on this computer
+async function dictateEngine({ text, partial, status }) {
+  const L = AI();
+  if (L.stats.stt.state !== "ready") status("loading the speech model on this computer (the first time takes a minute)…");
+  await L.startSTT();
+  let floor = 0.004, hot = 0, speaking = false, pre = [], chunks = [], len = 0, quiet = 0, voiced = 0;
+  const jobs = [];
+  const flush = () => {
+    const audio = new Float32Array(len); let o = 0; for (const c of chunks) { audio.set(c, o); o += c.length }
+    const talk = voiced * FRAME_MS; chunks = []; len = 0; quiet = 0; voiced = 0; speaking = false;
+    if (talk < 300) return partial("");
+    partial("…");
+    jobs.push(L.transcribe(audio, performance.now()).then((t) => {
+      t = t.replace(/\s+/g, " ").trim(); partial("");
+      if (/[A-Za-z]{2,}/.test(t)) text(t);
+    }));
+  };
+  return {
+    rate: 16000,
+    feed({ pcm, rms }) {
+      const loud = rms > Math.max(0.012, floor * 3);
+      if (!speaking) {
+        floor = floor * 0.995 + Math.min(rms, 0.05) * 0.005;
+        pre.push(pcm); if (pre.length > 40) pre.shift();
+        hot = loud ? hot + 1 : 0;
+        if (hot >= 3) { speaking = true; chunks = pre; len = pre.reduce((n, c) => n + c.length, 0); pre = []; quiet = 0; voiced = 3 }
+        return;
+      }
+      chunks.push(pcm); len += pcm.length; if (loud) voiced++;
+      quiet = loud ? 0 : quiet + FRAME_MS;
+      if (quiet >= 700 || len >= 16000 * MAX_SEC) flush();
+    },
+    async stop() { if (speaking) flush(); await Promise.allSettled(jobs) },
+  };
+}
+const dictation = window.Dictate ? Dictate.mount({
+  button: "#dictate", target: "#ctx", status: "#dictnote", engine: dictateEngine,
+  micId: () => $("#mic").value, busy: () => running, onChange: () => ctx.oninput(),
+}) : null;
+$("#start").addEventListener("click", () => dictation?.stop(), true);
+</script>
+</body>
+</html>
