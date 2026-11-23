@@ -1,0 +1,200 @@
+<title>Call Coach Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Layout: dark app shell; two audio lanes merge into one transcript → coach column, detail panel beside */
+  :root {
+    --bg:#121314; --surface:#1a1b1c; --raised:#212223; --line:#2d2b27; --line2:#3d3a34; --fg:#e9e4da; --dim:#9a9488; --faint:#6f6a61; --on-fg:#121314;
+    --accent:var(--fg); --me:#ffb547; --them:#5ff0d0; --hot:#ff5a3c; --ok:#8fe388;
+    --p-opener:#46494e; --p-rapport:#5a5e64; --p-discovery:#71757b; --p-pitch:#8b8f95; --p-objection:#d1513a; --p-closing:#b3b7bc; --p-wrap-up:#d6d8db;
+    --t-cold:#2b3532; --t-neutral:#3c5650; --t-warm:#3fa894; --t-hot:#5ff0d0;
+    --sans:"JetBrains Mono", ui-monospace, Menlo, monospace; --mono:"JetBrains Mono", ui-monospace, Menlo, monospace; --display:"Chakra Petch", "JetBrains Mono", sans-serif;
+    color-scheme:dark;
+  }
+
+  * { box-sizing:border-box }
+  body { background:var(--bg); color:var(--fg); font:14px/1.55 var(--sans); -webkit-font-smoothing:antialiased }
+  .wrap { max-width:1120px; margin:0 auto; padding-block:28px 48px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); display:flex; flex-direction:column; gap:22px }
+  header { display:flex; align-items:center; gap:12px; flex-wrap:wrap }
+  .logo { width:28px; height:28px; border-radius:6px; background:var(--fg); color:var(--on-fg); display:grid; place-items:center; font:700 14px/1 var(--display) }
+  h1 { font:700 19px/1.2 var(--display); margin:0; letter-spacing:.02em }
+  header p { margin:0; color:var(--dim); flex-basis:100% }
+  h2 { font:600 11px/1.3 var(--mono); color:var(--dim); letter-spacing:.08em; text-transform:uppercase; margin:0 0 10px }
+
+  .grid { display:grid; grid-template-columns: minmax(0,1.5fr) minmax(0,1fr); gap:16px; align-items:start }
+  @media (max-width: 820px) { .grid { grid-template-columns: minmax(0,1fr) } }
+
+  .board { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px; display:flex; flex-direction:column; gap:10px }
+  .lane { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:8px; position:relative }
+  .lane-label { font:500 11px var(--mono); letter-spacing:.05em; margin-bottom:-2px }
+  .lane-label.me { color:var(--me) } .lane-label.them { color:var(--them) }
+  .merge { text-align:center; color:var(--dim); font:12px var(--mono); padding:2px 0 }
+  .spine { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:8px }
+  @media (max-width: 560px) { .lane, .spine { grid-template-columns: minmax(0,1fr) minmax(0,1fr) } }
+
+  .node { all:unset; box-sizing:border-box; cursor:pointer; background:var(--raised); border:1px solid var(--line); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:3px; min-width:0; position:relative; transition:border-color .15s, background .15s, transform .15s }
+  .node:hover { border-color:var(--dim) }
+  .node:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
+  .node .n { font-weight:600; font-size:13px }
+  .node .s { font:11px/1.4 var(--mono); color:var(--dim); overflow-wrap:anywhere }
+  .node[aria-pressed="true"] { border-color:var(--fg); background:var(--raised) }
+  .node.pulse { border-color:var(--ok) }
+  .lane .node:not(:last-child)::after, .spine .node:not(:last-child)::after { content:"→"; position:absolute; right:-8px; top:50%; transform:translate(50%,-50%); color:var(--dim); font-size:12px; z-index:1 }
+  @media (max-width: 560px) { .lane .node::after, .spine .node::after { display:none } }
+
+  .controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding-top:6px; border-top:1px solid var(--line) }
+  .btn { all:unset; cursor:pointer; background:var(--fg); color:var(--on-fg); font:600 12.5px/1.2 var(--mono); padding:8px 14px; border-radius:6px; box-shadow:0 2px 0 #77716a }
+  .btn:active { transform:translateY(2px); box-shadow:none }
+  .btn:focus-visible { outline:2px solid var(--fg); outline-offset:2px }
+  #clock { font:500 13px var(--mono); color:var(--dim); font-variant-numeric:tabular-nums }
+  #log { font:12px/1.5 var(--mono); color:var(--dim); flex-basis:100%; min-height:1.5em }
+
+  .detail { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:18px; display:flex; flex-direction:column; gap:10px; position:sticky; top:env(safe-area-inset-top, 0px) }
+  .detail h3 { margin:0; font:600 16px/1.3 var(--display); text-wrap:balance }
+  .detail .tag { align-self:flex-start; font:600 11px var(--mono); color:var(--dim); border:1px solid var(--line2); padding:0 6px; border-radius:4px }
+  .detail p { margin:0 }
+  .detail dl { margin:0; display:grid; grid-template-columns:auto minmax(0,1fr); gap:6px 12px; font-size:13px }
+  .detail dt { color:var(--dim) } .detail dd { margin:0; font-family:var(--mono); font-size:12px; overflow-wrap:anywhere }
+  .detail .why { border-top:1px solid var(--line); padding-top:10px; color:var(--dim) }
+  .detail .why b { color:var(--fg); font-weight:600 }
+
+  .budget { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px }
+  .bar { display:flex; height:30px; border-radius:6px; overflow:hidden; font:500 11px var(--mono); color:var(--on-fg) }
+  .bar span { display:flex; align-items:center; padding:0 8px; white-space:nowrap; overflow:hidden }
+  .legend { display:flex; justify-content:space-between; font:11px var(--mono); color:var(--dim) }
+
+  .cols { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px }
+  .list { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px }
+  .list ul { margin:0; padding-left:18px; display:flex; flex-direction:column; gap:7px }
+  .list li::marker { color:var(--faint) }
+  code { font:12px var(--mono); background:var(--raised); padding:1px 5px; border-radius:4px }
+  @media (prefers-reduced-motion: reduce) { .node { transition:none } .node.pulse { transform:none } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="logo">S</div>
+    <h1>Call Coach: how it works</h1>
+    <p>Click any box for details. Press <b>Play one turn</b> to watch a sentence travel from someone's mouth to a suggestion on screen.</p>
+  </header>
+
+  <div class="grid">
+    <div class="board">
+      <h2>Pipeline</h2>
+      <div class="lane-label me">ME · your microphone</div>
+      <div class="lane" data-lane="me">
+        <button class="node" data-k="mic"><span class="n">Mic capture</span><span class="s">getUserMedia</span></button>
+        <button class="node" data-k="worklet" data-lane="me"><span class="n">PCM encoder</span><span class="s">AudioWorklet · 24kHz</span></button>
+        <button class="node" data-k="relay" data-lane="me"><span class="n">Short-lived key</span><span class="s">10 min · per lane</span></button>
+        <button class="node" data-k="stt" data-lane="me"><span class="n">Realtime STT</span><span class="s">gpt-4o-transcribe</span></button>
+      </div>
+      <div class="lane-label them">THEM · meeting tab audio</div>
+      <div class="lane" data-lane="them">
+        <button class="node" data-k="tab"><span class="n">Tab capture</span><span class="s">getDisplayMedia</span></button>
+        <button class="node" data-k="worklet" data-lane="them"><span class="n">PCM encoder</span><span class="s">AudioWorklet · 24kHz</span></button>
+        <button class="node" data-k="relay" data-lane="them"><span class="n">Short-lived key</span><span class="s">10 min · per lane</span></button>
+        <button class="node" data-k="stt" data-lane="them"><span class="n">Realtime STT</span><span class="s">gpt-4o-transcribe</span></button>
+      </div>
+      <div class="merge">↓ both lanes merge, already labeled by source ↓</div>
+      <div class="spine">
+        <button class="node" data-k="transcript"><span class="n">Transcript</span><span class="s">partials → final lines</span></button>
+        <button class="node" data-k="strategy"><span class="n">Strategy</span><span class="s">Haiku 5.5 · ~2s</span></button>
+        <button class="node" data-k="coach"><span class="n">Claude coach</span><span class="s">Opus 5.5 · JSON</span></button>
+        <button class="node" data-k="panel"><span class="n">Coach panel</span><span class="s">now · ask · loose ends</span></button>
+      </div>
+      <div class="controls">
+        <button class="btn" id="play">▶ Play one turn</button>
+        <span id="clock">t = 0.0s</span>
+        <div id="log" aria-live="polite">THEM: “a lot of our trials just go dark after week one.”</div>
+      </div>
+    </div>
+
+    <aside class="detail" id="detail" aria-live="polite"></aside>
+  </div>
+
+  <div class="budget">
+    <h2>Latency budget · after someone stops talking</h2>
+    <div class="bar">
+      <span style="flex:0.45;background:var(--them)">VAD 0.45s</span>
+      <span style="flex:0.3;background:var(--me)">final 0.3s</span>
+      <span style="flex:1.2;background:var(--dim)">debounce 1.2s</span>
+      <span style="flex:6;background:var(--accent)">Claude coach ≈ 6s</span>
+    </div>
+    <div class="legend"><span>0s</span><span>words appear live while speaking</span><span>≈ 8s new advice</span></div>
+  </div>
+
+  <div class="cols">
+    <div class="list">
+      <h2>Design choices</h2>
+      <ul>
+        <li><b>Speaker = source.</b> Mic is ME, tab is THEM. No diarization model needed, and labels are never wrong (unless your speakers bleed into the mic, so wear headphones).</li>
+        <li><b>Key stays server-side.</b> The browser asks this app for a 10-minute OpenAI key scoped to one transcription session, then streams audio straight to OpenAI. The real OpenAI and Anthropic keys never reach the page.</li>
+        <li><b>Context is per call.</b> The context box (who, goals, facts not to overstate) goes into every coach, strategy and recap call. Presets fill it; each saved session keeps the context it ran with. It never goes into a shared recap.</li>
+        <li><b>Recap on Stop.</b> One Claude pass over the numbered transcript: summary, what went well, misses linked to their line, next step, follow-up email draft, CRM notes.</li>
+        <li><b>Sharing.</b> “Share recap” makes a link with a random id and an 8-character code, shown once. Send them separately. 5 wrong codes lock the recap for 15 minutes; it expires after 14 days; Revoke deletes it at once.</li>
+        <li><b>Server VAD cuts turns at pauses</b>, so lines end on sentence boundaries instead of every 5s. Mic gets a lower threshold (0.3) because it's quieter than tab audio.</li>
+        <li><b>One coach call in flight.</b> New lines during a call mark it dirty; it re-runs once when done. Never queues a backlog.</li>
+        <li><b>Structured output.</b> Claude returns a fixed JSON schema, so the UI can't break on a chatty reply.</li>
+        <li><b>Fails soft.</b> Dropped transcription sockets reconnect on their own (1s, 2s, 4s… max 10s) while audio keeps flowing. A failed coach call keeps the last advice on screen and retries. Mic, tab-share and API key problems show a plain-English fix in the sidebar.</li>
+      </ul>
+    </div>
+    <div class="list">
+      <h2>What I'd build next</h2>
+      <ul>
+        <li>Stream the coach response so the “Now” line lands in ~1s.</li>
+        <li>Prompt-cache the context block; only the transcript tail changes.</li>
+        <li>CRM write-back for the recap's notes and next step.</li>
+        <li>Meeting bot mode (join Zoom/Meet as a participant) for the other side's audio without tab sharing.</li>
+        <li>Team mode: playbooks per deal stage, scorecards across reps.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const INFO = {
+  mic: { tag: "browser", t: "Mic capture", d: "Grabs your microphone with Chrome's echo cancellation, noise suppression and auto gain. A picker in the sidebar chooses the device; the YOU meter proves it's live.", kv: [["API", "navigator.mediaDevices.getUserMedia"], ["Label", "ME"]], why: "<b>Gotcha:</b> without headphones the mic hears the other person too, and their words show up as yours." },
+  tab: { tag: "browser", t: "Tab capture", d: "You share the Google Meet tab, or the claude.ai or ChatGPT tab for a voice chat, and turn on “Share tab audio”. Only the audio track is used; the video is ignored.", kv: [["API", "getDisplayMedia({ audio: true })"], ["Label", "THEM"], ["Browser", "Chrome or Edge on desktop"]], why: "<b>Desktop app instead of a tab?</b> Share the entire screen with system audio (Windows, recent macOS), or use the web version." },
+  worklet: { tag: "browser", t: "PCM encoder", d: "An AudioWorklet runs on the audio thread, converts float samples to 16-bit PCM at 24kHz, and posts small frames (~5ms) to a WebSocket. It also computes RMS for the level meters.", kv: [["Format", "pcm16 mono 24kHz"], ["Thread", "audio render thread"]], why: "<b>Why not MediaRecorder?</b> It makes compressed files in fixed chunks. Raw PCM can be streamed continuously." },
+  relay: { tag: "server → browser", t: "Short-lived key", d: "Before each lane connects, the page asks /api/realtime-token for a 10-minute OpenAI key tied to one transcription session (model, VAD and noise settings fixed by the server). The browser then opens its own WebSocket to OpenAI and sends base64 PCM as input_audio_buffer.append events.", kv: [["Route", "POST /api/realtime-token {who: me|them}"], ["Socket", "wss://api.openai.com/v1/realtime?intent=transcription"]], why: "<b>Why not a relay?</b> Vercel functions can't hold a WebSocket open. A scoped key that expires in 10 minutes keeps the real key on the server without one." },
+  stt: { tag: "OpenAI realtime", t: "Realtime STT", d: "Transcription-only realtime session. Server-side VAD detects start and end of speech, streams word deltas while you talk, then sends a final transcript per turn.", kv: [["Model", "gpt-4o-transcribe"], ["VAD", "server_vad, 450ms silence"], ["Events", "…transcription.delta / .completed"]], why: "<b>Result:</b> text appears as words are spoken; final line lands ~0.5s after the pause." },
+  transcript: { tag: "browser", t: "Transcript", d: "Deltas render as faded in-progress lines. Completed turns become final lines; consecutive turns by the same speaker merge. Word counts drive the talk-time ratio.", kv: [["Triggers", "coach after each final line"], ["Extras", "Copy · Clear · inject line"]], why: "<b>Talk ratio</b> is a classic sales metric: on discovery calls you want them talking more." },
+  strategy: { tag: "server → Claude", t: "Strategy (fast lane)", d: "Fires immediately after every finished line, no debounce. Reads the last ~6k chars and calls the play: which phase the call is in, how warm they are, what they care about, the move for the next 15 seconds, and one thing to avoid.", kv: [["Model", "claude-haiku-5-5"], ["Latency", "≈ 2s"], ["Phases", "opener → rapport → discovery → pitch → objection → closing → wrap-up"]], why: "<b>Two speeds:</b> the fast lane reacts to the last thing said; the slower coach thinks about the whole call." },
+  coach: { tag: "server → Claude", t: "Claude coach", d: "Sends your private context (who, goals, background) plus the last ~24k chars of transcript. Low effort for speed, JSON schema for a reliable shape, server-side fallback on refusals.", kv: [["Model", "claude-opus-5-5"], ["Effort", "low"], ["Output", "now · ask[] · loose_ends[] · covered[] · watch"]], why: "<b>Prompt rules:</b> reference their exact words, no generic advice, questions readable in 2 seconds." },
+  panel: { tag: "browser", t: "Coach panel", d: "One big “Now” nudge, up to three questions with a reason each, loose ends they raised that you haven't followed, goals already covered, and a red warning when you're rambling or missed a signal.", kv: [["Refresh", "~1.2s debounce + one call in flight"], ["Flash", "panel pulses on update"]], why: "<b>Designed for a glance</b> mid-sentence, not for reading." },
+};
+const detail = document.getElementById("detail");
+const nodes = [...document.querySelectorAll(".node")];
+function show(k, lane) {
+  const i = INFO[k];
+  nodes.forEach((n) => n.setAttribute("aria-pressed", n.dataset.k === k && (!lane || !n.dataset.lane || n.dataset.lane === lane) ? "true" : "false"));
+  detail.innerHTML = `<span class="tag">${i.tag}</span><h3>${i.t}</h3><p>${i.d}</p><dl>${i.kv.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl><p class="why">${i.why}</p>`;
+}
+nodes.forEach((n) => n.addEventListener("click", () => show(n.dataset.k, n.dataset.lane)));
+show("stt", "them");
+
+// simulated turn: timings mirror the real pipeline (speech end = t0)
+const STEPS = [
+  [0, "tab", "them", "THEM speaks; tab audio captured"],
+  [250, "worklet", "them", "PCM frames stream every ~5ms"],
+  [500, "relay", "them", "audio streams to OpenAI on a 10-minute key"],
+  [800, "stt", "them", "word deltas appear while they talk"],
+  [1700, "transcript", null, "pause detected → final line (+0.5s)"],
+  [2200, "strategy", null, "strategy fast lane fires instantly (~2s): phase = discovery, play = ask what they do in week one"],
+  [3300, "coach", null, "debounce 1.2s, then the deeper coach call (~6s, sped up here)"],
+  [4700, "panel", null, "Now: “Dig into trials going dark. Ask what they track.”"],
+];
+let timers = [], t0;
+document.getElementById("play").addEventListener("click", () => {
+  timers.forEach(clearTimeout); timers = []; nodes.forEach((n) => n.classList.remove("pulse"));
+  t0 = performance.now();
+  const clock = document.getElementById("clock"), log = document.getElementById("log");
+  const tick = setInterval(() => { clock.textContent = `t = ${((performance.now() - t0) / 1000).toFixed(1)}s`; }, 100);
+  STEPS.forEach(([ms, k, lane, msg]) => timers.push(setTimeout(() => {
+    nodes.forEach((n) => n.classList.remove("pulse"));
+    nodes.filter((n) => n.dataset.k === k && (!lane || n.dataset.lane === lane || !n.dataset.lane)).forEach((n) => n.classList.add("pulse"));
+    show(k, lane); log.textContent = msg;
+  }, ms)));
+  timers.push(setTimeout(() => { clearInterval(tick); nodes.forEach((n) => n.classList.remove("pulse")); }, 6100));
+});
+</script>

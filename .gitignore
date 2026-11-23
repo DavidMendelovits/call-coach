@@ -1,0 +1,11 @@
+.env
+.env*.local
+node_modules
+.vercel
+diag.txt
+sessions/
+reports/
+data/
+public/*.js
+public/chunks/
+public/ort/

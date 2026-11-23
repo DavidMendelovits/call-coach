@@ -1,0 +1,20 @@
+{
+  "name": "call-qa-prototype",
+  "version": "1.0.0",
+  "description": "Live call coach: live transcript, strategy and coaching, post-call recap, recaps shared by code",
+  "scripts": {
+    "start": "node --env-file=.env dev.mjs",
+    "report": "node report.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.11.0",
+    "@vercel/blob": "^2.9.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
